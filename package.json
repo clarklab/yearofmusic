@@ -1,0 +1,15 @@
+{
+  "name": "year-of-music",
+  "version": "1.0.0",
+  "description": "Daily song reminder SMS app for Year of Music",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build needed'"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^7.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}

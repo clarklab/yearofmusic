@@ -1,0 +1,18 @@
+
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[functions]
+  node_bundler = "esbuild"
+
+# Scheduled function to send daily reminders at 10am CST (weekdays only)
+# Runs at 10am CST = 4pm UTC (CST is UTC-6)
+[[functions]]
+  path = "/.netlify/functions/scheduled-reminder"
+  schedule = "0 16 * * 1-5"
