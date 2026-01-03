@@ -17,9 +17,36 @@ const settingsPanel = document.getElementById('settingsPanel');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const sendOnWeekendsToggle = document.getElementById('sendOnWeekendsToggle');
 const weekendTimeGroup = document.getElementById('weekendTimeGroup');
+const memberPhoneInput = document.getElementById('memberPhone');
 
 // Initialize
 loadData();
+
+// Phone number formatting
+if (memberPhoneInput) {
+    memberPhoneInput.addEventListener('input', (e) => {
+        let value = e.target.value.replace(/\D/g, ''); // Remove all non-digits
+
+        if (value.length > 10) {
+            value = value.slice(0, 10); // Limit to 10 digits
+        }
+
+        let formatted = '';
+        if (value.length > 0) {
+            formatted = '(' + value.substring(0, 3);
+            if (value.length >= 4) {
+                formatted += ') ' + value.substring(3, 6);
+                if (value.length >= 7) {
+                    formatted += '-' + value.substring(6, 10);
+                }
+            } else if (value.length === 3) {
+                formatted += ')';
+            }
+        }
+
+        e.target.value = formatted;
+    });
+}
 
 // Event Listeners
 logoutBtn.addEventListener('click', () => {
@@ -57,18 +84,16 @@ addMemberForm.addEventListener('submit', async (e) => {
     cancelBtn.disabled = false;
 
     if (success) {
-        // Show confirmation
-        document.getElementById('addMemberFormView').style.display = 'none';
-        document.getElementById('addMemberConfirmation').style.display = 'flex';
-        document.getElementById('confirmationText').textContent = `${name} has been added to the group!`;
+        // Close modal immediately and show updated list
+        addMemberModal.classList.remove('active');
+        addMemberForm.reset();
 
-        // Auto-close after 2 seconds
-        setTimeout(() => {
-            addMemberModal.classList.remove('active');
-            document.getElementById('addMemberFormView').style.display = 'block';
-            document.getElementById('addMemberConfirmation').style.display = 'none';
-            addMemberForm.reset();
-        }, 2000);
+        // Reset modal state for next use
+        document.getElementById('addMemberFormView').style.display = 'block';
+        document.getElementById('addMemberConfirmation').style.display = 'none';
+
+        // Ensure the UI is updated (it should already be from loadData in addMember)
+        renderDashboard();
     }
 });
 
