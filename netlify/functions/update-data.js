@@ -95,7 +95,9 @@ export default async (req, context) => {
                 sendTime: newSettings.sendTime,
                 timezone: newSettings.timezone,
                 message: newSettings.message,
-                paused: newSettings.paused
+                paused: newSettings.paused,
+                sendOnWeekends: newSettings.sendOnWeekends,
+                weekendSendTime: newSettings.weekendSendTime
             };
 
             await store.setJSON('settings', settings);
