@@ -125,7 +125,16 @@ function renderStatus() {
     if (appData.members && appData.members.length > 0) {
         const nextIndex = appData.currentIndex % appData.members.length;
         const next = appData.members[nextIndex];
-        nextUpEl.textContent = next.name;
+
+        const nextScheduledTime = getNextScheduledTime();
+        if (nextScheduledTime && appData.settings) {
+            const formattedDateTime = formatDateTime(nextScheduledTime, appData.settings.timezone);
+            nextUpEl.textContent = `${next.name} (${formattedDateTime})`;
+        } else if (appData.settings?.paused) {
+            nextUpEl.textContent = `${next.name} (Paused)`;
+        } else {
+            nextUpEl.textContent = next.name;
+        }
     } else {
         nextUpEl.textContent = 'No members';
     }
@@ -341,4 +350,75 @@ function formatPhone(phone) {
 function formatDate(dateStr) {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatDateTime(date, timezone) {
+    const options = {
+        timeZone: timezone,
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    };
+    return date.toLocaleString('en-US', options);
+}
+
+function getNextScheduledTime() {
+    if (!appData || !appData.settings) return null;
+
+    const { sendTime, weekendSendTime, timezone, sendOnWeekends, paused } = appData.settings;
+
+    if (paused) return null;
+
+    // Create a date in the specified timezone
+    const now = new Date();
+    const todayInTz = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+    const currentDay = todayInTz.getDay(); // 0 = Sunday, 6 = Saturday
+
+    // Helper to create a date with specific time
+    const createDateWithTime = (baseDate, timeStr) => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const date = new Date(baseDate);
+        date.setHours(hours, minutes, 0, 0);
+        return date;
+    };
+
+    // Helper to check if it's a weekend
+    const isWeekend = (day) => day === 0 || day === 6;
+
+    // Start checking from today
+    let checkDate = new Date(todayInTz);
+    let daysChecked = 0;
+
+    while (daysChecked < 14) { // Check up to 2 weeks ahead
+        const dayOfWeek = checkDate.getDay();
+        const isWeekendDay = isWeekend(dayOfWeek);
+
+        // Skip if weekend and not sending on weekends
+        if (isWeekendDay && !sendOnWeekends) {
+            checkDate.setDate(checkDate.getDate() + 1);
+            daysChecked++;
+            continue;
+        }
+
+        // Get the appropriate send time
+        const timeToUse = isWeekendDay ? (weekendSendTime || sendTime) : sendTime;
+        const scheduledTime = createDateWithTime(checkDate, timeToUse);
+
+        // Convert to timezone-aware date
+        const scheduledTimeStr = scheduledTime.toLocaleString('en-US', { timeZone: timezone });
+        const scheduledDate = new Date(scheduledTimeStr);
+
+        // If this time is in the future, return it
+        if (scheduledDate > now) {
+            return scheduledDate;
+        }
+
+        // Move to next day
+        checkDate.setDate(checkDate.getDate() + 1);
+        daysChecked++;
+    }
+
+    return null;
 }
