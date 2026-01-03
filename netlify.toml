@@ -13,3 +13,11 @@
 [functions."scheduled-reminder"]
   schedule = "0 16 * * 1-5"
   node_bundler = "esbuild"
+
+# Scheduled function to send weekend reminders at 10am CST (weekends only)
+# Runs at 10am CST = 4pm UTC on Saturday and Sunday
+# To change weekend time: update the hour in the cron expression (0 HH * * 0,6)
+# For different times: 10am CST = 16 UTC, 12pm CST = 18 UTC, 2pm CST = 20 UTC
+[functions."scheduled-reminder-weekend"]
+  schedule = "0 16 * * 0,6"
+  node_bundler = "esbuild"
