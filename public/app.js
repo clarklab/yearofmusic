@@ -13,9 +13,10 @@ const cancelAddBtn = document.getElementById('cancelAddBtn');
 const addMemberForm = document.getElementById('addMemberForm');
 const manualSendBtn = document.getElementById('manualSendBtn');
 const skipTurnBtn = document.getElementById('skipTurnBtn');
-const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
 const settingsPanel = document.getElementById('settingsPanel');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+const sendOnWeekendsToggle = document.getElementById('sendOnWeekendsToggle');
+const weekendTimeGroup = document.getElementById('weekendTimeGroup');
 
 // Initialize
 loadData();
@@ -83,10 +84,8 @@ skipTurnBtn.addEventListener('click', async () => {
     }
 });
 
-toggleSettingsBtn.addEventListener('click', () => {
-    const isVisible = settingsPanel.style.display !== 'none';
-    settingsPanel.style.display = isVisible ? 'none' : 'block';
-    toggleSettingsBtn.textContent = isVisible ? 'Edit' : 'Cancel';
+sendOnWeekendsToggle.addEventListener('change', () => {
+    weekendTimeGroup.style.display = sendOnWeekendsToggle.checked ? 'block' : 'none';
 });
 
 saveSettingsBtn.addEventListener('click', async () => {
@@ -176,6 +175,12 @@ function renderSettings() {
     document.getElementById('timezone').value = appData.settings.timezone;
     document.getElementById('messageTemplate').value = appData.settings.message;
     document.getElementById('pausedToggle').checked = appData.settings.paused;
+
+    // Weekend settings
+    const sendOnWeekends = appData.settings.sendOnWeekends || false;
+    document.getElementById('sendOnWeekendsToggle').checked = sendOnWeekends;
+    document.getElementById('weekendSendTime').value = appData.settings.weekendSendTime || appData.settings.sendTime;
+    weekendTimeGroup.style.display = sendOnWeekends ? 'block' : 'none';
 }
 
 function renderHistory() {
@@ -298,7 +303,9 @@ async function saveSettings() {
             sendTime: document.getElementById('sendTime').value,
             timezone: document.getElementById('timezone').value,
             message: document.getElementById('messageTemplate').value,
-            paused: document.getElementById('pausedToggle').checked
+            paused: document.getElementById('pausedToggle').checked,
+            sendOnWeekends: document.getElementById('sendOnWeekendsToggle').checked,
+            weekendSendTime: document.getElementById('weekendSendTime').value
         };
 
         const response = await fetch('/.netlify/functions/update-data', {
@@ -313,8 +320,6 @@ async function saveSettings() {
         if (response.ok) {
             alert('Settings saved!');
             await loadData();
-            settingsPanel.style.display = 'none';
-            toggleSettingsBtn.textContent = 'Edit';
         } else {
             alert('Failed to save settings');
         }
