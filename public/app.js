@@ -33,6 +33,8 @@ addMemberBtn.addEventListener('click', () => {
 cancelAddBtn.addEventListener('click', () => {
     addMemberModal.classList.remove('active');
     addMemberForm.reset();
+    document.getElementById('addMemberFormView').style.display = 'block';
+    document.getElementById('addMemberConfirmation').style.display = 'none';
 });
 
 addMemberForm.addEventListener('submit', async (e) => {
@@ -40,9 +42,33 @@ addMemberForm.addEventListener('submit', async (e) => {
     const name = document.getElementById('memberName').value;
     const phone = document.getElementById('memberPhone').value;
 
-    await addMember(name, phone);
-    addMemberModal.classList.remove('active');
-    addMemberForm.reset();
+    // Show loading state
+    const submitBtn = document.getElementById('submitAddBtn');
+    const cancelBtn = document.getElementById('cancelAddBtn');
+    submitBtn.classList.add('loading');
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+
+    const success = await addMember(name, phone);
+
+    submitBtn.classList.remove('loading');
+    submitBtn.disabled = false;
+    cancelBtn.disabled = false;
+
+    if (success) {
+        // Show confirmation
+        document.getElementById('addMemberFormView').style.display = 'none';
+        document.getElementById('addMemberConfirmation').style.display = 'flex';
+        document.getElementById('confirmationText').textContent = `${name} has been added to the group!`;
+
+        // Auto-close after 2 seconds
+        setTimeout(() => {
+            addMemberModal.classList.remove('active');
+            document.getElementById('addMemberFormView').style.display = 'block';
+            document.getElementById('addMemberConfirmation').style.display = 'none';
+            addMemberForm.reset();
+        }, 2000);
+    }
 });
 
 manualSendBtn.addEventListener('click', async () => {
@@ -187,12 +213,15 @@ async function addMember(name, phone) {
 
         if (response.ok) {
             await loadData();
+            return true;
         } else {
             alert('Failed to add member');
+            return false;
         }
     } catch (error) {
         console.error('Failed to add member:', error);
         alert('Failed to add member');
+        return false;
     }
 }
 
