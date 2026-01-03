@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Year of Music - Dashboard</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 Year of Music</h1>
+            <button id="logoutBtn" class="btn-secondary">Logout</button>
+        </header>
+
+        <div class="status-card" id="statusCard">
+            <div class="status-info">
+                <p class="status-label">Last Sent:</p>
+                <p id="lastSent" class="status-value">-</p>
+            </div>
+            <div class="status-info">
+                <p class="status-label">Next Up:</p>
+                <p id="nextUp" class="status-value">-</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Group Members</h2>
+                <button id="addMemberBtn" class="btn-primary">+ Add Member</button>
+            </div>
+            <div id="membersList" class="members-list"></div>
+        </div>
+
+        <div class="card">
+            <h2>Actions</h2>
+            <button id="manualSendBtn" class="btn-action">📤 Send Reminder Now</button>
+            <button id="skipTurnBtn" class="btn-action">⏭️ Skip Next Person</button>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Settings</h2>
+                <button id="toggleSettingsBtn" class="btn-secondary">Edit</button>
+            </div>
+            <div id="settingsPanel" class="settings-panel" style="display: none;">
+                <div class="form-group">
+                    <label for="sendTime">Send Time:</label>
+                    <input type="time" id="sendTime">
+                </div>
+                <div class="form-group">
+                    <label for="timezone">Timezone:</label>
+                    <select id="timezone">
+                        <option value="America/Chicago">Central (CST/CDT)</option>
+                        <option value="America/New_York">Eastern (EST/EDT)</option>
+                        <option value="America/Denver">Mountain (MST/MDT)</option>
+                        <option value="America/Los_Angeles">Pacific (PST/PDT)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="messageTemplate">Message Template:</label>
+                    <textarea id="messageTemplate" rows="4" placeholder="Use {name} for person's name"></textarea>
+                    <small>Use {name} to insert the person's name</small>
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="pausedToggle">
+                        <span class="toggle-text">Pause Daily Reminders</span>
+                    </label>
+                </div>
+                <button id="saveSettingsBtn" class="btn-primary">Save Settings</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Send History</h2>
+            </div>
+            <div id="historyList" class="history-list"></div>
+        </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div id="addMemberModal" class="modal">
+        <div class="modal-content">
+            <h3>Add Member</h3>
+            <form id="addMemberForm">
+                <div class="form-group">
+                    <label for="memberName">Name:</label>
+                    <input type="text" id="memberName" required>
+                </div>
+                <div class="form-group">
+                    <label for="memberPhone">Phone Number:</label>
+                    <input type="tel" id="memberPhone" placeholder="5551234567" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelAddBtn" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
