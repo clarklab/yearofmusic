@@ -1,8 +1,8 @@
 import { getStore } from '@netlify/blobs';
 import { schedule } from '@netlify/functions';
 
-// This function runs on weekdays at 10am CST (4pm UTC)
-// Note: The actual schedule is set in netlify.toml
+// This function runs daily at 10am CST (4pm UTC)
+// It checks settings to determine if it should send on weekends
 const handler = async (event, context) => {
     console.log('Scheduled reminder triggered at:', new Date().toISOString());
 
@@ -17,6 +17,20 @@ const handler = async (event, context) => {
             return {
                 statusCode: 200,
                 body: JSON.stringify({ message: 'Skipped - reminders paused' })
+            };
+        }
+
+        // Check if today is a weekend (0 = Sunday, 6 = Saturday)
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        // If it's a weekend and weekend sending is disabled, skip
+        if (isWeekend && !settings?.sendOnWeekends) {
+            console.log('Weekend sending is disabled, skipping scheduled send');
+            return {
+                statusCode: 200,
+                body: JSON.stringify({ message: 'Skipped - weekend sending disabled' })
             };
         }
 
@@ -45,5 +59,5 @@ const handler = async (event, context) => {
     }
 };
 
-// Export as scheduled function - runs weekdays
-export default schedule('0 16 * * 1-5', handler);
+// Export as scheduled function - runs daily at 10am CST (4pm UTC)
+export default schedule('0 16 * * *', handler);
