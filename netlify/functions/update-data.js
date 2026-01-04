@@ -151,7 +151,9 @@ export default async (req, context) => {
                 message: newSettings.message,
                 paused: newSettings.paused,
                 sendOnWeekends: newSettings.sendOnWeekends,
-                weekendSendTime: newSettings.weekendSendTime
+                weekendSendTime: newSettings.weekendSendTime,
+                includeJoke: newSettings.includeJoke,
+                includeHoroscope: newSettings.includeHoroscope
             };
 
             await store.setJSON('settings', settings);
