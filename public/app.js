@@ -18,34 +18,55 @@ const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const sendOnWeekendsToggle = document.getElementById('sendOnWeekendsToggle');
 const weekendTimeGroup = document.getElementById('weekendTimeGroup');
 const memberPhoneInput = document.getElementById('memberPhone');
+const memberCountEl = document.getElementById('memberCount');
+
+// Edit Member Modal
+const editMemberModal = document.getElementById('editMemberModal');
+const editMemberForm = document.getElementById('editMemberForm');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
+const editMemberPhoneInput = document.getElementById('editMemberPhone');
+
+// Remove Member Modal
+const removeMemberModal = document.getElementById('removeMemberModal');
+const cancelRemoveBtn = document.getElementById('cancelRemoveBtn');
+const confirmRemoveBtn = document.getElementById('confirmRemoveBtn');
+const removeConfirmText = document.getElementById('removeConfirmText');
+
+let memberToRemove = null;
 
 // Initialize
 loadData();
 
-// Phone number formatting
-if (memberPhoneInput) {
-    memberPhoneInput.addEventListener('input', (e) => {
-        let value = e.target.value.replace(/\D/g, ''); // Remove all non-digits
+// Phone number formatting helper
+function formatPhoneInput(e) {
+    let value = e.target.value.replace(/\D/g, ''); // Remove all non-digits
 
-        if (value.length > 10) {
-            value = value.slice(0, 10); // Limit to 10 digits
-        }
+    if (value.length > 10) {
+        value = value.slice(0, 10); // Limit to 10 digits
+    }
 
-        let formatted = '';
-        if (value.length > 0) {
-            formatted = '(' + value.substring(0, 3);
-            if (value.length >= 4) {
-                formatted += ') ' + value.substring(3, 6);
-                if (value.length >= 7) {
-                    formatted += '-' + value.substring(6, 10);
-                }
-            } else if (value.length === 3) {
-                formatted += ')';
+    let formatted = '';
+    if (value.length > 0) {
+        formatted = '(' + value.substring(0, 3);
+        if (value.length >= 4) {
+            formatted += ') ' + value.substring(3, 6);
+            if (value.length >= 7) {
+                formatted += '-' + value.substring(6, 10);
             }
+        } else if (value.length === 3) {
+            formatted += ')';
         }
+    }
 
-        e.target.value = formatted;
-    });
+    e.target.value = formatted;
+}
+
+// Apply phone formatting to both inputs
+if (memberPhoneInput) {
+    memberPhoneInput.addEventListener('input', formatPhoneInput);
+}
+if (editMemberPhoneInput) {
+    editMemberPhoneInput.addEventListener('input', formatPhoneInput);
 }
 
 // Event Listeners
@@ -117,6 +138,62 @@ saveSettingsBtn.addEventListener('click', async () => {
     await saveSettings();
 });
 
+// Edit Member Modal
+cancelEditBtn.addEventListener('click', () => {
+    editMemberModal.classList.remove('active');
+    editMemberForm.reset();
+});
+
+editMemberForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('editMemberId').value;
+    const name = document.getElementById('editMemberName').value;
+    const phone = document.getElementById('editMemberPhone').value;
+
+    const submitBtn = document.getElementById('submitEditBtn');
+    submitBtn.classList.add('loading');
+    submitBtn.disabled = true;
+
+    const success = await editMember(id, name, phone);
+
+    submitBtn.classList.remove('loading');
+    submitBtn.disabled = false;
+
+    if (success) {
+        editMemberModal.classList.remove('active');
+        editMemberForm.reset();
+    }
+});
+
+// Remove Member Modal
+cancelRemoveBtn.addEventListener('click', () => {
+    removeMemberModal.classList.remove('active');
+    memberToRemove = null;
+});
+
+confirmRemoveBtn.addEventListener('click', async () => {
+    if (memberToRemove) {
+        confirmRemoveBtn.classList.add('loading');
+        confirmRemoveBtn.disabled = true;
+
+        await removeMember(memberToRemove);
+
+        confirmRemoveBtn.classList.remove('loading');
+        confirmRemoveBtn.disabled = false;
+        removeMemberModal.classList.remove('active');
+        memberToRemove = null;
+    }
+});
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.member-actions')) {
+        document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+            menu.classList.remove('active');
+        });
+    }
+});
+
 // Functions
 async function loadData() {
     try {
@@ -168,6 +245,10 @@ function renderStatus() {
 function renderMembers() {
     const membersList = document.getElementById('membersList');
 
+    // Update member count
+    const count = appData.members ? appData.members.length : 0;
+    memberCountEl.textContent = count;
+
     if (!appData.members || appData.members.length === 0) {
         membersList.innerHTML = '<div class="empty-state">No members yet. Add your first member!</div>';
         return;
@@ -197,7 +278,23 @@ function renderMembers() {
                     <div class="member-phone">${formatPhone(member.phone)}</div>
                 </div>
                 <div class="member-actions">
-                    <button class="btn-danger btn-small" onclick="removeMember('${member.id}')">Remove</button>
+                    <button class="menu-trigger" onclick="toggleMemberMenu(event, '${member.id}')">
+                        <span class="material-icons">more_vert</span>
+                    </button>
+                    <div class="dropdown-menu" id="menu-${member.id}">
+                        <button class="dropdown-item" onclick="openEditModal('${member.id}')">
+                            <span class="material-icons">edit</span>
+                            Edit
+                        </button>
+                        <button class="dropdown-item" onclick="makeNext('${member.id}')">
+                            <span class="material-icons">arrow_upward</span>
+                            Make Next
+                        </button>
+                        <button class="dropdown-item danger" onclick="openRemoveModal('${member.id}', '${member.name.replace(/'/g, "\\'")}')">
+                            <span class="material-icons">delete</span>
+                            Remove
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -265,8 +362,6 @@ async function addMember(name, phone) {
 }
 
 async function removeMember(id) {
-    if (!confirm('Remove this member?')) return;
-
     try {
         const response = await fetch('/.netlify/functions/update-data', {
             method: 'POST',
@@ -286,6 +381,105 @@ async function removeMember(id) {
         console.error('Failed to remove member:', error);
         alert('Failed to remove member');
     }
+}
+
+async function editMember(id, name, phone) {
+    try {
+        const response = await fetch('/.netlify/functions/update-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'editMember',
+                id,
+                name,
+                phone: phone.replace(/\D/g, '') // Remove non-digits
+            })
+        });
+
+        if (response.ok) {
+            await loadData();
+            return true;
+        } else {
+            alert('Failed to update member');
+            return false;
+        }
+    } catch (error) {
+        console.error('Failed to update member:', error);
+        alert('Failed to update member');
+        return false;
+    }
+}
+
+async function makeNext(id) {
+    // Close any open menus
+    document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+        menu.classList.remove('active');
+    });
+
+    try {
+        const response = await fetch('/.netlify/functions/update-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'setNextMember',
+                id
+            })
+        });
+
+        if (response.ok) {
+            await loadData();
+        } else {
+            alert('Failed to set next member');
+        }
+    } catch (error) {
+        console.error('Failed to set next member:', error);
+        alert('Failed to set next member');
+    }
+}
+
+function toggleMemberMenu(event, memberId) {
+    event.stopPropagation();
+
+    // Close all other menus first
+    document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+        if (menu.id !== `menu-${memberId}`) {
+            menu.classList.remove('active');
+        }
+    });
+
+    // Toggle this menu
+    const menu = document.getElementById(`menu-${memberId}`);
+    menu.classList.toggle('active');
+}
+
+function openEditModal(memberId) {
+    // Close the dropdown menu
+    document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+        menu.classList.remove('active');
+    });
+
+    // Find the member
+    const member = appData.members.find(m => m.id === memberId);
+    if (!member) return;
+
+    // Populate the form
+    document.getElementById('editMemberId').value = member.id;
+    document.getElementById('editMemberName').value = member.name;
+    document.getElementById('editMemberPhone').value = formatPhone(member.phone);
+
+    // Show the modal
+    editMemberModal.classList.add('active');
+}
+
+function openRemoveModal(memberId, memberName) {
+    // Close the dropdown menu
+    document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+        menu.classList.remove('active');
+    });
+
+    memberToRemove = memberId;
+    removeConfirmText.textContent = `Are you sure you want to remove ${memberName} from the group?`;
+    removeMemberModal.classList.add('active');
 }
 
 async function sendManualReminder() {

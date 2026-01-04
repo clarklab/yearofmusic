@@ -85,6 +85,60 @@ export default async (req, context) => {
             });
         }
 
+        if (action === 'editMember') {
+            const { id, name, phone } = body;
+            let members = await store.get('members', { type: 'json' }) || [];
+
+            const memberIndex = members.findIndex(m => m.id === id);
+            if (memberIndex === -1) {
+                return new Response(JSON.stringify({ error: 'Member not found' }), {
+                    status: 404,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            // Update member
+            members[memberIndex] = { ...members[memberIndex], name, phone };
+
+            // Re-sort alphabetically by name
+            members.sort((a, b) => a.name.localeCompare(b.name));
+
+            await store.setJSON('members', members);
+
+            // Find new index of edited member and adjust currentIndex if needed
+            const newMemberIndex = members.findIndex(m => m.id === id);
+            let currentIndex = await store.get('currentIndex', { type: 'json' }) || 0;
+            if (currentIndex >= members.length) {
+                currentIndex = currentIndex % members.length;
+                await store.setJSON('currentIndex', currentIndex);
+            }
+
+            return new Response(JSON.stringify({ success: true }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        if (action === 'setNextMember') {
+            const { id } = body;
+            let members = await store.get('members', { type: 'json' }) || [];
+
+            const memberIndex = members.findIndex(m => m.id === id);
+            if (memberIndex === -1) {
+                return new Response(JSON.stringify({ error: 'Member not found' }), {
+                    status: 404,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
+            await store.setJSON('currentIndex', memberIndex);
+
+            return new Response(JSON.stringify({ success: true }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         if (action === 'updateSettings') {
             const { settings: newSettings } = body;
             let settings = await store.get('settings', { type: 'json' }) || {};
