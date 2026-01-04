@@ -312,6 +312,10 @@ function renderSettings() {
     document.getElementById('sendOnWeekendsToggle').checked = sendOnWeekends;
     document.getElementById('weekendSendTime').value = appData.settings.weekendSendTime || appData.settings.sendTime;
     weekendTimeGroup.style.display = sendOnWeekends ? 'block' : 'none';
+
+    // Fun content settings
+    document.getElementById('includeJokeToggle').checked = appData.settings.includeJoke || false;
+    document.getElementById('includeHoroscopeToggle').checked = appData.settings.includeHoroscope || false;
 }
 
 function renderHistory() {
@@ -533,7 +537,9 @@ async function saveSettings() {
             message: document.getElementById('messageTemplate').value,
             paused: document.getElementById('pausedToggle').checked,
             sendOnWeekends: document.getElementById('sendOnWeekendsToggle').checked,
-            weekendSendTime: document.getElementById('weekendSendTime').value
+            weekendSendTime: document.getElementById('weekendSendTime').value,
+            includeJoke: document.getElementById('includeJokeToggle').checked,
+            includeHoroscope: document.getElementById('includeHoroscopeToggle').checked
         };
 
         const response = await fetch('/.netlify/functions/update-data', {

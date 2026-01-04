@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import { getRandomContent } from './fun-content.js';
 
 export default async (req, context) => {
     if (req.method !== 'POST') {
@@ -48,7 +49,16 @@ export default async (req, context) => {
         const currentMember = members[currentIndex];
 
         // Format message
-        const message = settings.message.replace('{name}', currentMember.name);
+        let message = settings.message.replace('{name}', currentMember.name);
+
+        // Append fun content if enabled
+        const funContent = getRandomContent(
+            settings.includeJoke || false,
+            settings.includeHoroscope || false
+        );
+        if (funContent) {
+            message = message + '\n\n' + funContent;
+        }
 
         // Send SMS via Textbelt
         const textbeltResponse = await fetch('https://textbelt.com/text', {
