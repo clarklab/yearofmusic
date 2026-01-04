@@ -57,7 +57,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2>Group Members</h2>
+                <h2>Group Members<span id="memberCount" class="count-pill">0</span></h2>
                 <button id="addMemberBtn" class="btn-primary"><span class="material-icons btn-icon">person_add</span>Add Member</button>
             </div>
             <div id="membersList" class="members-list"></div>
@@ -146,6 +146,40 @@
                     <h3>Member Added!</h3>
                     <p id="confirmationText"></p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Member Modal -->
+    <div id="editMemberModal" class="modal">
+        <div class="modal-content">
+            <h3>Edit Member</h3>
+            <form id="editMemberForm">
+                <input type="hidden" id="editMemberId">
+                <div class="form-group">
+                    <label for="editMemberName">Name:</label>
+                    <input type="text" id="editMemberName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editMemberPhone">Phone Number:</label>
+                    <input type="tel" id="editMemberPhone" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelEditBtn" class="btn-secondary">Cancel</button>
+                    <button type="submit" id="submitEditBtn" class="btn-primary"><span class="material-icons btn-icon">save</span>Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Remove Member Confirmation Modal -->
+    <div id="removeMemberModal" class="modal">
+        <div class="modal-content">
+            <h3>Remove Member</h3>
+            <p id="removeConfirmText">Are you sure you want to remove this member?</p>
+            <div class="modal-actions">
+                <button type="button" id="cancelRemoveBtn" class="btn-secondary">Cancel</button>
+                <button type="button" id="confirmRemoveBtn" class="btn-danger"><span class="material-icons btn-icon">delete</span>Remove</button>
             </div>
         </div>
     </div>
