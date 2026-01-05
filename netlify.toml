@@ -8,11 +8,9 @@
   to = "/index.html"
   status = 200
 
-# Scheduled function to send daily reminders at 10am CST
-# Runs at 10am CST = 4pm UTC (CST is UTC-6)
-# The function checks settings internally to determine if it should send on weekends
-# To change time: update the hour in the cron expression (0 HH * * *)
-# Time conversions: 10am CST = 16 UTC, 12pm CST = 18 UTC, 2pm CST = 20 UTC
+# Scheduled function to send daily reminders
+# Runs every 15 minutes and checks if current time matches user's sendTime setting
+# The function respects the sendTime configured in the dashboard
 [functions."scheduled-reminder"]
-  schedule = "0 16 * * *"
+  schedule = "*/15 * * * *"
   node_bundler = "esbuild"
