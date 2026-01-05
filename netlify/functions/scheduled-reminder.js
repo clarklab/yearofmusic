@@ -14,10 +14,7 @@ const handler = async (event, context) => {
 
         if (settings?.paused) {
             console.log('Reminders are paused, skipping scheduled send');
-            return {
-                statusCode: 200,
-                body: JSON.stringify({ message: 'Skipped - reminders paused' })
-            };
+            return;
         }
 
         // Check if today is a weekend (0 = Sunday, 6 = Saturday)
@@ -28,10 +25,7 @@ const handler = async (event, context) => {
         // If it's a weekend and weekend sending is disabled, skip
         if (isWeekend && !settings?.sendOnWeekends) {
             console.log('Weekend sending is disabled, skipping scheduled send');
-            return {
-                statusCode: 200,
-                body: JSON.stringify({ message: 'Skipped - weekend sending disabled' })
-            };
+            return;
         }
 
         // Call the send-reminder function
@@ -42,20 +36,27 @@ const handler = async (event, context) => {
             body: JSON.stringify({ manual: false })
         });
 
+        // Check if the response is ok before parsing JSON
+        if (!response.ok) {
+            const text = await response.text();
+            console.error('Send-reminder returned error:', response.status, text.substring(0, 200));
+            return;
+        }
+
+        // Check content-type before parsing as JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Send-reminder returned non-JSON response:', contentType, text.substring(0, 200));
+            return;
+        }
+
         const result = await response.json();
-
         console.log('Scheduled send result:', result);
-
-        return {
-            statusCode: 200,
-            body: JSON.stringify(result)
-        };
+        return;
     } catch (error) {
         console.error('Scheduled reminder error:', error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: error.message })
-        };
+        return;
     }
 };
 
