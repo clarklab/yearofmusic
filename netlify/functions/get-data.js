@@ -17,8 +17,7 @@ export default async (req, context) => {
                 sendTime: '10:00',
                 timezone: 'America/Chicago',
                 message: "Hey {name}! It's your turn to share a song today for Year of Music! Post your Spotify link to the group 🎵",
-                paused: false,
-                textbeltKey: 'f9ef39e5aae048a0d8337fad7dc9eff7e0b4b6ecucS9btY9IyZqdxFOqrx52fYnJ'
+                paused: false
             };
             await store.setJSON('settings', settings);
         }
@@ -39,7 +38,7 @@ export default async (req, context) => {
         }
 
         // Don't send password to frontend
-        const { password, textbeltKey, ...publicSettings } = settings;
+        const { password, ...publicSettings } = settings;
 
         return new Response(JSON.stringify({
             settings: publicSettings,

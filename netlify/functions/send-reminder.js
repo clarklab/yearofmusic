@@ -67,7 +67,7 @@ export default async (req, context) => {
             body: JSON.stringify({
                 phone: currentMember.phone,
                 message: message,
-                key: settings.textbeltKey
+                key: process.env.TEXTBELT_API_KEY
             })
         });
 
