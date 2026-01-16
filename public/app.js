@@ -508,8 +508,17 @@ async function addMember(name, phone) {
         const result = await response.json();
 
         if (response.ok && result.success) {
+            // Update local state directly
+            const newMember = {
+                id: result.memberId,
+                name,
+                phone: phone.replace(/\D/g, '')
+            };
+            appData.members.push(newMember);
+            appData.members.sort((a, b) => a.name.localeCompare(b.name));
+
             highlightMemberId = result.memberId;
-            await loadData();
+            renderDashboard();
             showToast(`${name} added to the group`);
             return true;
         } else {
@@ -524,8 +533,9 @@ async function addMember(name, phone) {
 }
 
 async function removeMember(id) {
-    // Get member name before removing
-    const member = appData.members.find(m => m.id === id);
+    // Get member info before removing
+    const removeIndex = appData.members.findIndex(m => m.id === id);
+    const member = appData.members[removeIndex];
     const memberName = member ? member.name : 'Member';
 
     try {
@@ -540,7 +550,17 @@ async function removeMember(id) {
         });
 
         if (response.ok) {
-            await loadData();
+            // Update local state directly
+            appData.members.splice(removeIndex, 1);
+
+            // Adjust currentIndex if needed
+            if (removeIndex < appData.currentIndex) {
+                appData.currentIndex = Math.max(0, appData.currentIndex - 1);
+            } else if (appData.members.length > 0) {
+                appData.currentIndex = appData.currentIndex % appData.members.length;
+            }
+
+            renderDashboard();
             showToast(`${memberName} removed from the group`);
         } else {
             showToast('Failed to remove member', 'error');
@@ -566,8 +586,20 @@ async function editMember(id, name, phone) {
         });
 
         if (response.ok) {
+            // Update local state directly
+            const memberIndex = appData.members.findIndex(m => m.id === id);
+            if (memberIndex !== -1) {
+                appData.members[memberIndex] = {
+                    ...appData.members[memberIndex],
+                    name,
+                    phone: phone.replace(/\D/g, '')
+                };
+                // Re-sort alphabetically
+                appData.members.sort((a, b) => a.name.localeCompare(b.name));
+            }
+
             highlightMemberId = id;
-            await loadData();
+            renderDashboard();
             showToast(`${name} updated`);
             return true;
         } else {
@@ -587,8 +619,9 @@ async function makeNext(id) {
         menu.classList.remove('active');
     });
 
-    // Get member name before the operation
-    const member = appData.members.find(m => m.id === id);
+    // Get member index and name
+    const memberIndex = appData.members.findIndex(m => m.id === id);
+    const member = appData.members[memberIndex];
     const memberName = member ? member.name : 'Member';
 
     try {
@@ -603,8 +636,10 @@ async function makeNext(id) {
         });
 
         if (response.ok) {
+            // Update local state directly - no need to refetch
+            appData.currentIndex = memberIndex;
             highlightMemberId = id;
-            await loadData();
+            renderDashboard();
             showToast(`${memberName} is now next up`);
         } else {
             showToast('Failed to set next member', 'error');
@@ -694,13 +729,12 @@ async function skipTurn() {
         });
 
         if (response.ok) {
-            await loadData();
-            // Highlight the new next-up member
+            // Update local state directly
             if (appData.members && appData.members.length > 0) {
-                const nextIndex = appData.currentIndex % appData.members.length;
-                highlightMemberId = appData.members[nextIndex].id;
-                renderMembers();
+                appData.currentIndex = (appData.currentIndex + 1) % appData.members.length;
+                highlightMemberId = appData.members[appData.currentIndex].id;
             }
+            renderDashboard();
             showToast('Skipped to next person');
         } else {
             showToast('Failed to skip turn', 'error');
