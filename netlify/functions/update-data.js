@@ -1,6 +1,8 @@
 import { getStore } from '@netlify/blobs';
 import { randomUUID } from 'crypto';
 
+const MAX_MEMBERS = 25;
+
 export default async (req, context) => {
     if (req.method !== 'POST') {
         return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -11,12 +13,38 @@ export default async (req, context) => {
 
     try {
         const body = await req.json();
-        const { action } = body;
-        const store = getStore('yom-data');
+        const { action, clubSlug } = body;
+
+        // Validate clubSlug
+        if (!clubSlug || typeof clubSlug !== 'string') {
+            return new Response(JSON.stringify({ error: 'Club slug is required' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const store = getStore('textclub-data');
+
+        // Verify club exists
+        const settings = await store.get(`club:${clubSlug}:settings`, { type: 'json' });
+        if (!settings) {
+            return new Response(JSON.stringify({ error: 'Club not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
 
         if (action === 'addMember') {
             const { name, phone } = body;
-            let members = await store.get('members', { type: 'json' }) || [];
+            let members = await store.get(`club:${clubSlug}:members`, { type: 'json' }) || [];
+
+            // Check member limit
+            if (members.length >= MAX_MEMBERS) {
+                return new Response(JSON.stringify({ error: `Maximum ${MAX_MEMBERS} members allowed per club` }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
 
             // Add new member
             const newMember = {
@@ -29,7 +57,7 @@ export default async (req, context) => {
             // Sort alphabetically by name
             members.sort((a, b) => a.name.localeCompare(b.name));
 
-            await store.setJSON('members', members);
+            await store.setJSON(`club:${clubSlug}:members`, members);
 
             return new Response(JSON.stringify({ success: true }), {
                 status: 200,
@@ -39,8 +67,8 @@ export default async (req, context) => {
 
         if (action === 'removeMember') {
             const { id } = body;
-            let members = await store.get('members', { type: 'json' }) || [];
-            let currentIndex = await store.get('currentIndex', { type: 'json' }) || 0;
+            let members = await store.get(`club:${clubSlug}:members`, { type: 'json' }) || [];
+            let currentIndex = await store.get(`club:${clubSlug}:currentIndex`, { type: 'json' }) || 0;
 
             // Find index of member to remove
             const removeIndex = members.findIndex(m => m.id === id);
@@ -61,8 +89,8 @@ export default async (req, context) => {
                 currentIndex = currentIndex % members.length;
             }
 
-            await store.setJSON('members', members);
-            await store.setJSON('currentIndex', currentIndex);
+            await store.setJSON(`club:${clubSlug}:members`, members);
+            await store.setJSON(`club:${clubSlug}:currentIndex`, currentIndex);
 
             return new Response(JSON.stringify({ success: true }), {
                 status: 200,
@@ -71,12 +99,12 @@ export default async (req, context) => {
         }
 
         if (action === 'skipTurn') {
-            let members = await store.get('members', { type: 'json' }) || [];
-            let currentIndex = await store.get('currentIndex', { type: 'json' }) || 0;
+            let members = await store.get(`club:${clubSlug}:members`, { type: 'json' }) || [];
+            let currentIndex = await store.get(`club:${clubSlug}:currentIndex`, { type: 'json' }) || 0;
 
             if (members.length > 0) {
                 currentIndex = (currentIndex + 1) % members.length;
-                await store.setJSON('currentIndex', currentIndex);
+                await store.setJSON(`club:${clubSlug}:currentIndex`, currentIndex);
             }
 
             return new Response(JSON.stringify({ success: true }), {
@@ -87,7 +115,7 @@ export default async (req, context) => {
 
         if (action === 'editMember') {
             const { id, name, phone } = body;
-            let members = await store.get('members', { type: 'json' }) || [];
+            let members = await store.get(`club:${clubSlug}:members`, { type: 'json' }) || [];
 
             const memberIndex = members.findIndex(m => m.id === id);
             if (memberIndex === -1) {
@@ -103,14 +131,13 @@ export default async (req, context) => {
             // Re-sort alphabetically by name
             members.sort((a, b) => a.name.localeCompare(b.name));
 
-            await store.setJSON('members', members);
+            await store.setJSON(`club:${clubSlug}:members`, members);
 
             // Find new index of edited member and adjust currentIndex if needed
-            const newMemberIndex = members.findIndex(m => m.id === id);
-            let currentIndex = await store.get('currentIndex', { type: 'json' }) || 0;
+            let currentIndex = await store.get(`club:${clubSlug}:currentIndex`, { type: 'json' }) || 0;
             if (currentIndex >= members.length) {
                 currentIndex = currentIndex % members.length;
-                await store.setJSON('currentIndex', currentIndex);
+                await store.setJSON(`club:${clubSlug}:currentIndex`, currentIndex);
             }
 
             return new Response(JSON.stringify({ success: true }), {
@@ -121,7 +148,7 @@ export default async (req, context) => {
 
         if (action === 'setNextMember') {
             const { id } = body;
-            let members = await store.get('members', { type: 'json' }) || [];
+            let members = await store.get(`club:${clubSlug}:members`, { type: 'json' }) || [];
 
             const memberIndex = members.findIndex(m => m.id === id);
             if (memberIndex === -1) {
@@ -131,7 +158,7 @@ export default async (req, context) => {
                 });
             }
 
-            await store.setJSON('currentIndex', memberIndex);
+            await store.setJSON(`club:${clubSlug}:currentIndex`, memberIndex);
 
             return new Response(JSON.stringify({ success: true }), {
                 status: 200,
@@ -141,11 +168,11 @@ export default async (req, context) => {
 
         if (action === 'updateSettings') {
             const { settings: newSettings } = body;
-            let settings = await store.get('settings', { type: 'json' }) || {};
+            let currentSettings = await store.get(`club:${clubSlug}:settings`, { type: 'json' }) || {};
 
-            // Merge settings, keeping password and API key
-            settings = {
-                ...settings,
+            // Merge settings, keeping password
+            currentSettings = {
+                ...currentSettings,
                 sendTime: newSettings.sendTime,
                 timezone: newSettings.timezone,
                 message: newSettings.message,
@@ -156,7 +183,7 @@ export default async (req, context) => {
                 includeHoroscope: newSettings.includeHoroscope
             };
 
-            await store.setJSON('settings', settings);
+            await store.setJSON(`club:${clubSlug}:settings`, currentSettings);
 
             return new Response(JSON.stringify({ success: true }), {
                 status: 200,

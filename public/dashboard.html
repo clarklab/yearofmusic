@@ -3,23 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Year of Music</title>
-    <meta name="description" content="Manage your Year of Music group members and daily reminder settings.">
+    <title>Dashboard - Text Club</title>
+    <meta name="description" content="Manage your Text Club group members and daily reminder settings.">
     <meta name="robots" content="noindex, nofollow">
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://yearofmusic.superfun.games/">
-    <meta property="og:title" content="Year of Music - Daily Music Sharing Reminders">
-    <meta property="og:description" content="Share a song every day with your group. Year of Music sends daily reminders to keep everyone connected through music.">
-    <meta property="og:image" content="https://yearofmusic.superfun.games/og-image.png">
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://yearofmusic.superfun.games/">
-    <meta property="twitter:title" content="Year of Music - Daily Music Sharing Reminders">
-    <meta property="twitter:description" content="Share a song every day with your group. Year of Music sends daily reminders to keep everyone connected through music.">
-    <meta property="twitter:image" content="https://yearofmusic.superfun.games/og-image.png">
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -35,7 +21,7 @@
 <body>
     <div class="container">
         <header>
-            <h1><span class="material-icons" style="vertical-align: middle; font-size: 1.5rem;">queue_music</span> Year of Music</h1>
+            <h1><span class="material-icons" style="vertical-align: middle; font-size: 1.5rem;">sms</span> <span id="clubName">Text Club</span></h1>
             <button id="logoutBtn" class="btn-secondary"><span class="material-icons btn-icon">logout</span>Logout</button>
         </header>
 
@@ -130,6 +116,16 @@
             </div>
             <div id="historyList" class="history-list"></div>
         </div>
+
+        <div class="card" style="background: #fff3e0; border: 1px solid #ffcc80;">
+            <div class="card-header">
+                <h2 style="color: #e65100;">Danger Zone</h2>
+            </div>
+            <button id="deleteClubBtn" class="btn-danger" style="width: 100%;">
+                <span class="material-icons btn-icon">delete_forever</span>
+                Delete This Club
+            </button>
+        </div>
     </div>
 
     <!-- Add Member Modal -->
@@ -193,6 +189,23 @@
                 <button type="button" id="cancelRemoveBtn" class="btn-secondary">Cancel</button>
                 <button type="button" id="confirmRemoveBtn" class="btn-danger"><span class="material-icons btn-icon">delete</span>Remove</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Delete Club Confirmation Modal -->
+    <div id="deleteClubModal" class="modal">
+        <div class="modal-content">
+            <h3>Delete Club</h3>
+            <p>This action cannot be undone. All members and history will be permanently deleted.</p>
+            <div class="form-group">
+                <label for="deleteConfirmPassword">Enter your password to confirm:</label>
+                <input type="password" id="deleteConfirmPassword" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="cancelDeleteBtn" class="btn-secondary">Cancel</button>
+                <button type="button" id="confirmDeleteBtn" class="btn-danger"><span class="material-icons btn-icon">delete_forever</span>Delete Forever</button>
+            </div>
+            <p id="deleteError" class="error"></p>
         </div>
     </div>
 

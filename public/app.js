@@ -1,9 +1,19 @@
+// Extract club slug from URL path (e.g., /yearofmusic/dashboard -> yearofmusic)
+const pathParts = window.location.pathname.split('/').filter(Boolean);
+const clubSlug = pathParts[0];
+
 // Check authentication
-if (!sessionStorage.getItem('yom-auth')) {
-    window.location.href = '/index.html';
+if (!clubSlug || !sessionStorage.getItem(`textclub-auth-${clubSlug}`)) {
+    // Redirect to club login or home
+    if (clubSlug) {
+        window.location.href = `/${clubSlug}`;
+    } else {
+        window.location.href = '/';
+    }
 }
 
 let appData = null;
+let clubName = clubSlug; // Will be updated when data loads
 
 // DOM Elements
 const logoutBtn = document.getElementById('logoutBtn');
@@ -32,10 +42,34 @@ const cancelRemoveBtn = document.getElementById('cancelRemoveBtn');
 const confirmRemoveBtn = document.getElementById('confirmRemoveBtn');
 const removeConfirmText = document.getElementById('removeConfirmText');
 
+// Delete Club Modal
+const deleteClubBtn = document.getElementById('deleteClubBtn');
+const deleteClubModal = document.getElementById('deleteClubModal');
+const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+const deleteConfirmPassword = document.getElementById('deleteConfirmPassword');
+const deleteError = document.getElementById('deleteError');
+
 let memberToRemove = null;
 
 // Initialize
+loadClubInfo();
 loadData();
+
+// Load club info (name)
+async function loadClubInfo() {
+    try {
+        const response = await fetch(`/.netlify/functions/get-club-info?clubSlug=${encodeURIComponent(clubSlug)}`);
+        if (response.ok) {
+            const club = await response.json();
+            clubName = club.name;
+            document.getElementById('clubName').textContent = club.name;
+            document.title = `${club.name} - Text Club`;
+        }
+    } catch (error) {
+        console.error('Failed to load club info:', error);
+    }
+}
 
 // Phone number formatting helper
 function formatPhoneInput(e) {
@@ -71,8 +105,8 @@ if (editMemberPhoneInput) {
 
 // Event Listeners
 logoutBtn.addEventListener('click', () => {
-    sessionStorage.removeItem('yom-auth');
-    window.location.href = '/index.html';
+    sessionStorage.removeItem(`textclub-auth-${clubSlug}`);
+    window.location.href = `/${clubSlug}`;
 });
 
 addMemberBtn.addEventListener('click', () => {
@@ -185,6 +219,55 @@ confirmRemoveBtn.addEventListener('click', async () => {
     }
 });
 
+// Delete Club Modal
+deleteClubBtn.addEventListener('click', () => {
+    deleteClubModal.classList.add('active');
+    deleteConfirmPassword.value = '';
+    deleteError.textContent = '';
+});
+
+cancelDeleteBtn.addEventListener('click', () => {
+    deleteClubModal.classList.remove('active');
+    deleteConfirmPassword.value = '';
+    deleteError.textContent = '';
+});
+
+confirmDeleteBtn.addEventListener('click', async () => {
+    const password = deleteConfirmPassword.value;
+    if (!password) {
+        deleteError.textContent = 'Please enter your password';
+        return;
+    }
+
+    confirmDeleteBtn.classList.add('loading');
+    confirmDeleteBtn.disabled = true;
+    deleteError.textContent = '';
+
+    try {
+        const response = await fetch('/.netlify/functions/delete-club', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clubSlug, password })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            sessionStorage.removeItem(`textclub-auth-${clubSlug}`);
+            alert('Club deleted successfully');
+            window.location.href = '/';
+        } else {
+            deleteError.textContent = result.error || 'Failed to delete club';
+            confirmDeleteBtn.classList.remove('loading');
+            confirmDeleteBtn.disabled = false;
+        }
+    } catch (error) {
+        deleteError.textContent = 'Failed to delete club';
+        confirmDeleteBtn.classList.remove('loading');
+        confirmDeleteBtn.disabled = false;
+    }
+});
+
 // Close dropdowns when clicking outside
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.member-actions')) {
@@ -197,7 +280,15 @@ document.addEventListener('click', (e) => {
 // Functions
 async function loadData() {
     try {
-        const response = await fetch('/.netlify/functions/get-data');
+        const response = await fetch(`/.netlify/functions/get-data?clubSlug=${encodeURIComponent(clubSlug)}`);
+        if (!response.ok) {
+            if (response.status === 404) {
+                alert('Club not found');
+                window.location.href = '/';
+                return;
+            }
+            throw new Error('Failed to load data');
+        }
         appData = await response.json();
         renderDashboard();
     } catch (error) {
@@ -346,16 +437,19 @@ async function addMember(name, phone) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'addMember',
+                clubSlug,
                 name,
                 phone: phone.replace(/\D/g, '') // Remove non-digits
             })
         });
 
-        if (response.ok) {
+        const result = await response.json();
+
+        if (response.ok && result.success) {
             await loadData();
             return true;
         } else {
-            alert('Failed to add member');
+            alert(result.error || 'Failed to add member');
             return false;
         }
     } catch (error) {
@@ -372,6 +466,7 @@ async function removeMember(id) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'removeMember',
+                clubSlug,
                 id
             })
         });
@@ -394,6 +489,7 @@ async function editMember(id, name, phone) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'editMember',
+                clubSlug,
                 id,
                 name,
                 phone: phone.replace(/\D/g, '') // Remove non-digits
@@ -426,6 +522,7 @@ async function makeNext(id) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'setNextMember',
+                clubSlug,
                 id
             })
         });
@@ -491,7 +588,7 @@ async function sendManualReminder() {
         const response = await fetch('/.netlify/functions/send-reminder', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ manual: true })
+            body: JSON.stringify({ manual: true, clubSlug })
         });
 
         const result = await response.json();
@@ -514,7 +611,8 @@ async function skipTurn() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                action: 'skipTurn'
+                action: 'skipTurn',
+                clubSlug
             })
         });
 
@@ -547,6 +645,7 @@ async function saveSettings() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'updateSettings',
+                clubSlug,
                 settings
             })
         });

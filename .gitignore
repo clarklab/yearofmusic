@@ -3,3 +3,6 @@ node_modules/
 .env
 *.log
 .DS_Store
+
+# Backup files (contain sensitive data)
+backup-*.json

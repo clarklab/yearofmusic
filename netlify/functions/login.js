@@ -9,16 +9,27 @@ export default async (req, context) => {
     }
 
     try {
-        const { password } = await req.json();
-        const store = getStore('yom-data');
+        const { password, clubSlug } = await req.json();
 
-        // Get settings from blob storage
-        let settings = await store.get('settings', { type: 'json' });
+        // Validate clubSlug
+        if (!clubSlug || typeof clubSlug !== 'string') {
+            return new Response(JSON.stringify({ error: 'Club slug is required' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
 
-        // Initialize with default password if not set
+        const store = getStore('textclub-data');
+
+        // Get settings for this club
+        const settings = await store.get(`club:${clubSlug}:settings`, { type: 'json' });
+
+        // If no settings exist, club doesn't exist
         if (!settings) {
-            settings = { password: 'yom' };
-            await store.setJSON('settings', settings);
+            return new Response(JSON.stringify({ success: false, error: 'Club not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
 
         const isValid = password === settings.password;

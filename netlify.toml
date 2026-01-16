@@ -1,16 +1,35 @@
-
 [build]
   publish = "public"
   functions = "netlify/functions"
 
+# Static pages
 [[redirects]]
-  from = "/*"
+  from = "/create"
+  to = "/create.html"
+  status = 200
+
+# Club dashboard route - must come before club login
+[[redirects]]
+  from = "/:slug/dashboard"
+  to = "/dashboard.html"
+  status = 200
+
+# Club login route (any slug that's not a static file or function)
+[[redirects]]
+  from = "/:slug"
+  to = "/club-login.html"
+  status = 200
+  conditions = {Role = ["*"]}
+  force = false
+
+# Fallback for home page
+[[redirects]]
+  from = "/"
   to = "/index.html"
   status = 200
 
 # Scheduled function to send daily reminders
-# Runs every 15 minutes and checks if current time matches user's sendTime setting
-# The function respects the sendTime configured in the dashboard
+# Runs every 15 minutes and checks if current time matches each club's sendTime setting
 [functions."scheduled-reminder"]
   schedule = "*/15 * * * *"
   node_bundler = "esbuild"

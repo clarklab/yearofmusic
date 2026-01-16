@@ -10,18 +10,35 @@ export default async (req, context) => {
     }
 
     try {
-        const { manual = false } = await req.json();
-        const store = getStore('yom-data');
+        const { manual = false, clubSlug } = await req.json();
 
-        // Get data
-        const settings = await store.get('settings', { type: 'json' });
-        const members = await store.get('members', { type: 'json' }) || [];
-        let currentIndex = await store.get('currentIndex', { type: 'json' }) || 0;
-        let history = await store.get('history', { type: 'json' }) || [];
+        // Validate clubSlug
+        if (!clubSlug || typeof clubSlug !== 'string') {
+            return new Response(JSON.stringify({ error: 'Club slug is required' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const store = getStore('textclub-data');
+
+        // Get data for this club
+        const settings = await store.get(`club:${clubSlug}:settings`, { type: 'json' });
+        const members = await store.get(`club:${clubSlug}:members`, { type: 'json' }) || [];
+        let currentIndex = await store.get(`club:${clubSlug}:currentIndex`, { type: 'json' }) || 0;
+        let history = await store.get(`club:${clubSlug}:history`, { type: 'json' }) || [];
+
+        // If no settings exist, club doesn't exist
+        if (!settings) {
+            return new Response(JSON.stringify({ error: 'Club not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
 
         // Check if paused (only for scheduled sends)
         if (!manual && settings?.paused) {
-            console.log('Reminders are paused, skipping send');
+            console.log(`[${clubSlug}] Reminders are paused, skipping send`);
             return new Response(JSON.stringify({
                 success: true,
                 skipped: true,
@@ -34,7 +51,7 @@ export default async (req, context) => {
 
         // Check if we have members
         if (members.length === 0) {
-            console.log('No members to send to');
+            console.log(`[${clubSlug}] No members to send to`);
             return new Response(JSON.stringify({
                 success: false,
                 error: 'No members'
@@ -85,13 +102,15 @@ export default async (req, context) => {
 
         history.unshift(historyEntry); // Add to beginning
         history = history.slice(0, 100); // Keep last 100
-        await store.setJSON('history', history);
+        await store.setJSON(`club:${clubSlug}:history`, history);
 
         // Advance to next person if successful
         if (textbeltResult.success) {
             currentIndex = (currentIndex + 1) % members.length;
-            await store.setJSON('currentIndex', currentIndex);
+            await store.setJSON(`club:${clubSlug}:currentIndex`, currentIndex);
         }
+
+        console.log(`[${clubSlug}] Send result: ${textbeltResult.success ? 'success' : 'failed'} to ${currentMember.name}`);
 
         return new Response(JSON.stringify({
             success: textbeltResult.success,

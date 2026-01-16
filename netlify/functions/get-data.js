@@ -2,39 +2,45 @@ import { getStore } from '@netlify/blobs';
 
 export default async (req, context) => {
     try {
-        const store = getStore('yom-data');
+        // Get clubSlug from query params
+        const url = new URL(req.url);
+        const clubSlug = url.searchParams.get('clubSlug');
 
-        // Get all data
-        let settings = await store.get('settings', { type: 'json' });
-        let members = await store.get('members', { type: 'json' });
-        let currentIndex = await store.get('currentIndex', { type: 'json' });
-        let history = await store.get('history', { type: 'json' });
-
-        // Initialize defaults if not set
-        if (!settings) {
-            settings = {
-                password: 'yom',
-                sendTime: '10:00',
-                timezone: 'America/Chicago',
-                message: "Hey {name}! It's your turn to share a song today for Year of Music! Post your Spotify link to the group 🎵",
-                paused: false
-            };
-            await store.setJSON('settings', settings);
+        // Validate clubSlug
+        if (!clubSlug) {
+            return new Response(JSON.stringify({ error: 'Club slug is required' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
 
+        const store = getStore('textclub-data');
+
+        // Get all data for this club
+        let settings = await store.get(`club:${clubSlug}:settings`, { type: 'json' });
+        let members = await store.get(`club:${clubSlug}:members`, { type: 'json' });
+        let currentIndex = await store.get(`club:${clubSlug}:currentIndex`, { type: 'json' });
+        let history = await store.get(`club:${clubSlug}:history`, { type: 'json' });
+
+        // If no settings exist, club doesn't exist
+        if (!settings) {
+            return new Response(JSON.stringify({ error: 'Club not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Initialize defaults if not set
         if (!members) {
             members = [];
-            await store.setJSON('members', members);
         }
 
         if (currentIndex === null || currentIndex === undefined) {
             currentIndex = 0;
-            await store.setJSON('currentIndex', currentIndex);
         }
 
         if (!history) {
             history = [];
-            await store.setJSON('history', history);
         }
 
         // Don't send password to frontend

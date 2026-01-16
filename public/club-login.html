@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Text Club</title>
+    <meta name="description" content="Login to your Text Club admin dashboard.">
+    <meta name="robots" content="noindex, nofollow">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-card">
+            <a href="/" style="text-decoration: none; color: inherit;">
+                <h1><span class="material-icons" style="vertical-align: middle; font-size: 2rem;">sms</span> <span id="clubName">Text Club</span></h1>
+            </a>
+            <p class="subtitle">Admin Dashboard</p>
+
+            <div class="features-list">
+                <div class="feature-item">
+                    <span class="material-icons feature-icon">sms</span>
+                    <span class="feature-text">Simple daily reminders via SMS</span>
+                </div>
+                <div class="feature-item">
+                    <span class="material-icons feature-icon">groups</span>
+                    <span class="feature-text">Manage the group list with ease</span>
+                </div>
+                <div class="feature-item">
+                    <span class="material-icons feature-icon">settings</span>
+                    <span class="feature-text">Time/date/message settings</span>
+                </div>
+            </div>
+
+            <form id="loginForm">
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Enter password"
+                    required
+                    autocomplete="current-password"
+                >
+                <button type="submit">Login</button>
+                <p id="error" class="error"></p>
+            </form>
+
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <a href="/" style="color: #666; font-size: 0.9rem;">Back to home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Extract club slug from URL path
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const clubSlug = pathParts[0];
+
+        if (!clubSlug) {
+            window.location.href = '/';
+        }
+
+        // Fetch club info to display name
+        async function loadClubInfo() {
+            try {
+                const response = await fetch(`/.netlify/functions/get-club-info?clubSlug=${encodeURIComponent(clubSlug)}`);
+                if (response.ok) {
+                    const club = await response.json();
+                    document.getElementById('clubName').textContent = club.name;
+                    document.title = `${club.name} - Text Club`;
+                } else if (response.status === 404) {
+                    document.getElementById('error').textContent = 'Club not found';
+                }
+            } catch (error) {
+                console.error('Failed to load club info:', error);
+            }
+        }
+
+        loadClubInfo();
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('error');
+
+            try {
+                const response = await fetch('/.netlify/functions/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, clubSlug })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    sessionStorage.setItem(`textclub-auth-${clubSlug}`, 'true');
+                    window.location.href = `/${clubSlug}/dashboard`;
+                } else {
+                    errorEl.textContent = data.error === 'Club not found' ? 'Club not found' : 'Invalid password';
+                }
+            } catch (error) {
+                errorEl.textContent = 'Login failed. Please try again.';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create a Club - Text Club</title>
+    <meta name="description" content="Create your own Text Club for group SMS reminders.">
+    <meta name="robots" content="noindex, nofollow">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-card" style="max-width: 420px;">
+            <a href="/" style="text-decoration: none; color: inherit;">
+                <h1><span class="material-icons" style="vertical-align: middle; font-size: 2rem;">sms</span> Text Club</h1>
+            </a>
+            <p class="subtitle">Create a new club</p>
+
+            <form id="createForm">
+                <div class="form-group">
+                    <label for="clubName">Club Name</label>
+                    <input
+                        type="text"
+                        id="clubName"
+                        placeholder="e.g., Song of the Day"
+                        required
+                        maxlength="50"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="clubSlug">Club URL</label>
+                    <div style="display: flex; align-items: center; gap: 0.25rem;">
+                        <span style="color: #666; font-size: 0.9rem;">textclub.fun/</span>
+                        <input
+                            type="text"
+                            id="clubSlug"
+                            placeholder="song-of-the-day"
+                            required
+                            pattern="[a-z0-9][a-z0-9-]*[a-z0-9]|[a-z0-9]"
+                            minlength="2"
+                            maxlength="30"
+                            style="flex: 1;"
+                        >
+                    </div>
+                    <small id="slugStatus" style="color: #666;"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Admin Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="At least 4 characters"
+                        required
+                        minlength="4"
+                    >
+                    <small>You'll use this to manage the club</small>
+                </div>
+
+                <button type="submit" id="submitBtn" class="btn-primary" style="width: 100%; margin-top: 1rem;">
+                    <span class="material-icons btn-icon">add</span>
+                    Create Club
+                </button>
+
+                <p id="error" class="error"></p>
+            </form>
+
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <a href="/" style="color: #666; font-size: 0.9rem;">Back to home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const clubNameInput = document.getElementById('clubName');
+        const clubSlugInput = document.getElementById('clubSlug');
+        const slugStatus = document.getElementById('slugStatus');
+        const submitBtn = document.getElementById('submitBtn');
+        const errorEl = document.getElementById('error');
+
+        let slugCheckTimeout = null;
+        let slugAvailable = false;
+
+        // Auto-generate slug from name
+        clubNameInput.addEventListener('input', () => {
+            const name = clubNameInput.value;
+            const slug = name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '')
+                .slice(0, 30);
+            clubSlugInput.value = slug;
+            checkSlug(slug);
+        });
+
+        // Check slug availability on manual input
+        clubSlugInput.addEventListener('input', () => {
+            const slug = clubSlugInput.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+            clubSlugInput.value = slug;
+            checkSlug(slug);
+        });
+
+        function checkSlug(slug) {
+            if (slugCheckTimeout) clearTimeout(slugCheckTimeout);
+
+            if (!slug || slug.length < 2) {
+                slugStatus.textContent = '';
+                slugAvailable = false;
+                return;
+            }
+
+            slugStatus.textContent = 'Checking...';
+            slugStatus.style.color = '#666';
+
+            slugCheckTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/.netlify/functions/check-slug?slug=${encodeURIComponent(slug)}`);
+                    const result = await response.json();
+
+                    if (result.available) {
+                        slugStatus.textContent = 'Available!';
+                        slugStatus.style.color = '#34a853';
+                        slugAvailable = true;
+                    } else {
+                        slugStatus.textContent = result.message || 'Not available';
+                        slugStatus.style.color = '#ea4335';
+                        slugAvailable = false;
+                    }
+                } catch (error) {
+                    slugStatus.textContent = 'Error checking availability';
+                    slugStatus.style.color = '#ea4335';
+                    slugAvailable = false;
+                }
+            }, 300);
+        }
+
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorEl.textContent = '';
+
+            const name = clubNameInput.value.trim();
+            const slug = clubSlugInput.value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!slugAvailable) {
+                errorEl.textContent = 'Please choose an available club URL';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+
+            try {
+                const response = await fetch('/.netlify/functions/create-club', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, slug, password })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Redirect to new club's login page
+                    window.location.href = `/${slug}`;
+                } else {
+                    errorEl.textContent = result.error || 'Failed to create club';
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('loading');
+                }
+            } catch (error) {
+                errorEl.textContent = 'Failed to create club. Please try again.';
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+            }
+        });
+    </script>
+</body>
+</html>
