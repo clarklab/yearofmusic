@@ -116,7 +116,7 @@ async function loadClubInfo() {
             const club = await response.json();
             clubName = club.name;
             document.getElementById('clubName').textContent = club.name;
-            document.title = `${club.name} - Text Club`;
+            document.title = `${club.name} - Rotato`;
         }
     } catch (error) {
         console.error('Failed to load club info:', error);

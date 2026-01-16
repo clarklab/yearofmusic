@@ -1,8 +1,8 @@
-# Text Club - Architecture Guide
+# Rotato - Architecture Guide
 
 ## Overview
 
-Text Club is a multi-tenant web platform for managing group SMS reminders. Each "Club" is an independent group where members take turns on a rotating schedule, getting text reminders when it's their turn. Perfect for book clubs, song sharing, recipe exchanges, or any group activity.
+Rotato is a multi-tenant web platform for managing group SMS reminders. Each "Club" is an independent group where members take turns on a rotating schedule, getting text reminders when it's their turn. Perfect for book clubs, song sharing, recipe exchanges, or any group activity.
 
 ## Tech Stack
 
@@ -15,7 +15,7 @@ Text Club is a multi-tenant web platform for managing group SMS reminders. Each 
 ## Directory Structure
 
 ```
-textclub/
+rotato/
 ├── netlify/
 │   └── functions/           # Serverless functions
 │       ├── login.js         # Club password verification

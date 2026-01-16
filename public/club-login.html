@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Text Club</title>
-    <meta name="description" content="Login to your Text Club admin dashboard.">
+    <title>Login - Rotato</title>
+    <meta name="description" content="Login to your Rotato admin dashboard.">
     <meta name="robots" content="noindex, nofollow">
 
     <!-- Favicon -->
@@ -22,7 +22,7 @@
     <div class="container">
         <div class="login-card">
             <a href="/" style="text-decoration: none; color: inherit;">
-                <h1><span class="material-icons" style="vertical-align: middle; font-size: 2rem;">sms</span> <span id="clubName">Text Club</span></h1>
+                <h1><span class="material-icons" style="vertical-align: middle; font-size: 2rem;">sms</span> <span id="clubName">Rotato</span></h1>
             </a>
             <p class="subtitle">Admin Dashboard</p>
 
@@ -75,7 +75,7 @@
                 if (response.ok) {
                     const club = await response.json();
                     document.getElementById('clubName').textContent = club.name;
-                    document.title = `${club.name} - Text Club`;
+                    document.title = `${club.name} - Rotato`;
                 } else if (response.status === 404) {
                     document.getElementById('error').textContent = 'Club not found';
                 }
