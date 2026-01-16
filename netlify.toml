@@ -2,6 +2,27 @@
   publish = "public"
   functions = "netlify/functions"
 
+# Static assets - serve directly (must come before slug routes)
+[[redirects]]
+  from = "/styles.css"
+  to = "/styles.css"
+  status = 200
+
+[[redirects]]
+  from = "/app.js"
+  to = "/app.js"
+  status = 200
+
+[[redirects]]
+  from = "/*.png"
+  to = "/:splat.png"
+  status = 200
+
+[[redirects]]
+  from = "/*.ico"
+  to = "/:splat.ico"
+  status = 200
+
 # Static pages
 [[redirects]]
   from = "/create"
@@ -14,13 +35,11 @@
   to = "/dashboard.html"
   status = 200
 
-# Club login route (any slug that's not a static file or function)
+# Club login route (any path with single segment that's not a file)
 [[redirects]]
   from = "/:slug"
   to = "/club-login.html"
   status = 200
-  conditions = {Role = ["*"]}
-  force = false
 
 # Fallback for home page
 [[redirects]]
