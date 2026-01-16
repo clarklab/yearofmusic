@@ -53,7 +53,10 @@ export default async (req, context) => {
             history
         }), {
             status: 200,
-            headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
+            }
         });
     } catch (error) {
         console.error('Get data error:', error);
