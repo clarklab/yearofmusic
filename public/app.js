@@ -342,6 +342,7 @@ async function loadData() {
             throw new Error('Failed to load data');
         }
         appData = await response.json();
+        console.log('loadData: currentIndex =', appData.currentIndex, 'highlightMemberId =', highlightMemberId);
         renderDashboard();
     } catch (error) {
         console.error('Failed to load data:', error);
@@ -398,6 +399,7 @@ function renderMembers() {
     }
 
     const nextIndex = appData.currentIndex % appData.members.length;
+    console.log('renderMembers: nextIndex =', nextIndex, 'nextMember =', appData.members[nextIndex]?.name);
     let lastSentName = null;
     if (appData.history && appData.history.length > 0) {
         lastSentName = appData.history[0].name;
