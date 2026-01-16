@@ -35,9 +35,9 @@ export default async (req, context) => {
         // Clean phone number for comparison
         const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
 
-        // Check password and phone (if adminPhone exists in settings)
+        // Check password and phone
         const passwordValid = password === settings.password;
-        const phoneValid = !settings.adminPhone || cleanPhone === settings.adminPhone;
+        const phoneValid = cleanPhone === settings.adminPhone;
 
         const isValid = passwordValid && phoneValid;
 
