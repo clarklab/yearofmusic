@@ -2,51 +2,6 @@
   publish = "public"
   functions = "netlify/functions"
 
-# Static assets - serve directly (must come before slug routes)
-[[redirects]]
-  from = "/styles.css"
-  to = "/styles.css"
-  status = 200
-
-[[redirects]]
-  from = "/app.js"
-  to = "/app.js"
-  status = 200
-
-[[redirects]]
-  from = "/*.png"
-  to = "/:splat.png"
-  status = 200
-
-[[redirects]]
-  from = "/*.ico"
-  to = "/:splat.ico"
-  status = 200
-
-# Static pages
-[[redirects]]
-  from = "/create"
-  to = "/create.html"
-  status = 200
-
-# Club dashboard route - must come before club login
-[[redirects]]
-  from = "/:slug/dashboard"
-  to = "/dashboard.html"
-  status = 200
-
-# Club login route (any path with single segment that's not a file)
-[[redirects]]
-  from = "/:slug"
-  to = "/club-login.html"
-  status = 200
-
-# Fallback for home page
-[[redirects]]
-  from = "/"
-  to = "/index.html"
-  status = 200
-
 # Scheduled function to send daily reminders
 # Runs every 15 minutes and checks if current time matches each club's sendTime setting
 [functions."scheduled-reminder"]

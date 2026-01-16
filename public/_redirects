@@ -1,0 +1,6 @@
+# Static pages
+/create    /create.html    200
+
+# Club routes
+/*/dashboard    /dashboard.html    200
+/*    /club-login.html    200
