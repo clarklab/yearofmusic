@@ -14,6 +14,58 @@ if (!clubSlug || !sessionStorage.getItem(`textclub-auth-${clubSlug}`)) {
 
 let appData = null;
 let clubName = clubSlug; // Will be updated when data loads
+let highlightMemberId = null; // Track which member to highlight after refresh
+
+// Toast notification system
+function showToast(message, type = 'success') {
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    const icon = type === 'success' ? 'check_circle' : 'error';
+    toast.innerHTML = `<span class="material-icons">${icon}</span>${message}`;
+
+    container.appendChild(toast);
+
+    // Play subtle sound
+    playNotificationSound(type);
+
+    // Remove after delay
+    setTimeout(() => {
+        toast.classList.add('toast-out');
+        setTimeout(() => toast.remove(), 200);
+    }, 2500);
+}
+
+// Subtle notification sound
+function playNotificationSound(type) {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        // Pleasant chime frequencies
+        oscillator.frequency.value = type === 'success' ? 880 : 440;
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.2);
+    } catch (e) {
+        // Audio not supported, fail silently
+    }
+}
 
 // DOM Elements
 const logoutBtn = document.getElementById('logoutBtn');
@@ -354,12 +406,14 @@ function renderMembers() {
     membersList.innerHTML = appData.members.map((member, index) => {
         const isNext = index === nextIndex;
         const isLast = member.name === lastSentName;
+        const shouldHighlight = member.id === highlightMemberId;
         const classes = [];
         if (isNext) classes.push('next-up');
         if (isLast) classes.push('last-sent');
+        if (shouldHighlight) classes.push('highlight');
 
         return `
-            <div class="member-item ${classes.join(' ')}">
+            <div class="member-item ${classes.join(' ')}" data-member-id="${member.id}">
                 <div class="member-info">
                     <div class="member-name">
                         ${member.name}
@@ -390,6 +444,13 @@ function renderMembers() {
             </div>
         `;
     }).join('');
+
+    // Clear highlight after animation completes
+    if (highlightMemberId) {
+        setTimeout(() => {
+            highlightMemberId = null;
+        }, 600);
+    }
 }
 
 function renderSettings() {
@@ -446,20 +507,26 @@ async function addMember(name, phone) {
         const result = await response.json();
 
         if (response.ok && result.success) {
+            highlightMemberId = result.memberId;
             await loadData();
+            showToast(`${name} added to the group`);
             return true;
         } else {
-            alert(result.error || 'Failed to add member');
+            showToast(result.error || 'Failed to add member', 'error');
             return false;
         }
     } catch (error) {
         console.error('Failed to add member:', error);
-        alert('Failed to add member');
+        showToast('Failed to add member', 'error');
         return false;
     }
 }
 
 async function removeMember(id) {
+    // Get member name before removing
+    const member = appData.members.find(m => m.id === id);
+    const memberName = member ? member.name : 'Member';
+
     try {
         const response = await fetch('/.netlify/functions/update-data', {
             method: 'POST',
@@ -473,12 +540,13 @@ async function removeMember(id) {
 
         if (response.ok) {
             await loadData();
+            showToast(`${memberName} removed from the group`);
         } else {
-            alert('Failed to remove member');
+            showToast('Failed to remove member', 'error');
         }
     } catch (error) {
         console.error('Failed to remove member:', error);
-        alert('Failed to remove member');
+        showToast('Failed to remove member', 'error');
     }
 }
 
@@ -497,15 +565,17 @@ async function editMember(id, name, phone) {
         });
 
         if (response.ok) {
+            highlightMemberId = id;
             await loadData();
+            showToast(`${name} updated`);
             return true;
         } else {
-            alert('Failed to update member');
+            showToast('Failed to update member', 'error');
             return false;
         }
     } catch (error) {
         console.error('Failed to update member:', error);
-        alert('Failed to update member');
+        showToast('Failed to update member', 'error');
         return false;
     }
 }
@@ -515,6 +585,10 @@ async function makeNext(id) {
     document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
         menu.classList.remove('active');
     });
+
+    // Get member name before the operation
+    const member = appData.members.find(m => m.id === id);
+    const memberName = member ? member.name : 'Member';
 
     try {
         const response = await fetch('/.netlify/functions/update-data', {
@@ -528,13 +602,15 @@ async function makeNext(id) {
         });
 
         if (response.ok) {
+            highlightMemberId = id;
             await loadData();
+            showToast(`${memberName} is now next up`);
         } else {
-            alert('Failed to set next member');
+            showToast('Failed to set next member', 'error');
         }
     } catch (error) {
         console.error('Failed to set next member:', error);
-        alert('Failed to set next member');
+        showToast('Failed to set next member', 'error');
     }
 }
 
@@ -594,14 +670,14 @@ async function sendManualReminder() {
         const result = await response.json();
 
         if (result.success) {
-            alert(`Reminder sent to ${result.sentTo}!`);
             await loadData();
+            showToast(`Reminder sent to ${result.sentTo}`);
         } else {
-            alert('Failed to send reminder: ' + (result.error || 'Unknown error'));
+            showToast('Failed to send: ' + (result.error || 'Unknown error'), 'error');
         }
     } catch (error) {
         console.error('Failed to send reminder:', error);
-        alert('Failed to send reminder');
+        showToast('Failed to send reminder', 'error');
     }
 }
 
@@ -618,12 +694,19 @@ async function skipTurn() {
 
         if (response.ok) {
             await loadData();
+            // Highlight the new next-up member
+            if (appData.members && appData.members.length > 0) {
+                const nextIndex = appData.currentIndex % appData.members.length;
+                highlightMemberId = appData.members[nextIndex].id;
+                renderMembers();
+            }
+            showToast('Skipped to next person');
         } else {
-            alert('Failed to skip turn');
+            showToast('Failed to skip turn', 'error');
         }
     } catch (error) {
         console.error('Failed to skip turn:', error);
-        alert('Failed to skip turn');
+        showToast('Failed to skip turn', 'error');
     }
 }
 
@@ -651,14 +734,14 @@ async function saveSettings() {
         });
 
         if (response.ok) {
-            alert('Settings saved!');
             await loadData();
+            showToast('Settings saved');
         } else {
-            alert('Failed to save settings');
+            showToast('Failed to save settings', 'error');
         }
     } catch (error) {
         console.error('Failed to save settings:', error);
-        alert('Failed to save settings');
+        showToast('Failed to save settings', 'error');
     }
 }
 

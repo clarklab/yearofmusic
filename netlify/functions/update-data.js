@@ -59,7 +59,7 @@ export default async (req, context) => {
 
             await store.setJSON(`club:${clubSlug}:members`, members);
 
-            return new Response(JSON.stringify({ success: true }), {
+            return new Response(JSON.stringify({ success: true, memberId: newMember.id }), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json' }
             });
