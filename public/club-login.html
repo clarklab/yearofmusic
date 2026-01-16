@@ -43,9 +43,17 @@
 
             <form id="loginForm">
                 <input
+                    type="tel"
+                    id="phone"
+                    placeholder="Phone number"
+                    required
+                    autocomplete="tel"
+                    style="margin-bottom: 0.5rem;"
+                >
+                <input
                     type="password"
                     id="password"
-                    placeholder="Enter password"
+                    placeholder="Password"
                     required
                     autocomplete="current-password"
                 >
@@ -86,8 +94,29 @@
 
         loadClubInfo();
 
+        // Phone formatting
+        const phoneInput = document.getElementById('phone');
+        phoneInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 10) value = value.slice(0, 10);
+            let formatted = '';
+            if (value.length > 0) {
+                formatted = '(' + value.substring(0, 3);
+                if (value.length >= 4) {
+                    formatted += ') ' + value.substring(3, 6);
+                    if (value.length >= 7) {
+                        formatted += '-' + value.substring(6, 10);
+                    }
+                } else if (value.length === 3) {
+                    formatted += ')';
+                }
+            }
+            e.target.value = formatted;
+        });
+
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const phone = phoneInput.value;
             const password = document.getElementById('password').value;
             const errorEl = document.getElementById('error');
 
@@ -95,7 +124,7 @@
                 const response = await fetch('/.netlify/functions/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password, clubSlug })
+                    body: JSON.stringify({ phone, password, clubSlug })
                 });
 
                 const data = await response.json();
@@ -104,7 +133,7 @@
                     sessionStorage.setItem(`textclub-auth-${clubSlug}`, 'true');
                     window.location.href = `/${clubSlug}/dashboard`;
                 } else {
-                    errorEl.textContent = data.error === 'Club not found' ? 'Club not found' : 'Invalid password';
+                    errorEl.textContent = data.error || 'Invalid phone or password';
                 }
             } catch (error) {
                 errorEl.textContent = 'Login failed. Please try again.';

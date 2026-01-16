@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import { randomUUID } from 'crypto';
 
 export default async (req, context) => {
     if (req.method !== 'POST') {
@@ -9,7 +10,7 @@ export default async (req, context) => {
     }
 
     try {
-        const { name, slug, password } = await req.json();
+        const { name, slug, password, adminName, adminPhone } = await req.json();
 
         // Validate inputs
         if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -28,6 +29,29 @@ export default async (req, context) => {
 
         if (!password || typeof password !== 'string' || password.length < 4) {
             return new Response(JSON.stringify({ error: 'Password must be at least 4 characters' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        if (!adminName || typeof adminName !== 'string' || adminName.trim().length === 0) {
+            return new Response(JSON.stringify({ error: 'Your name is required' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        if (!adminPhone || typeof adminPhone !== 'string') {
+            return new Response(JSON.stringify({ error: 'Your phone number is required' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Clean phone number (digits only)
+        const cleanPhone = adminPhone.replace(/\D/g, '');
+        if (cleanPhone.length !== 10) {
+            return new Response(JSON.stringify({ error: 'Phone number must be 10 digits' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -67,6 +91,7 @@ export default async (req, context) => {
         // Create club settings
         const settings = {
             password,
+            adminPhone: cleanPhone,
             sendTime: '10:00',
             timezone: 'America/Chicago',
             message: `Hey {name}! It's your turn to share today for ${name.trim()}! Post your pick to the group.`,
@@ -75,6 +100,13 @@ export default async (req, context) => {
             weekendSendTime: '10:00',
             includeJoke: false,
             includeHoroscope: false
+        };
+
+        // Create admin as first member
+        const adminMember = {
+            id: randomUUID(),
+            name: adminName.trim(),
+            phone: cleanPhone
         };
 
         // Add to clubs list
@@ -88,7 +120,7 @@ export default async (req, context) => {
 
         // Create club data
         await store.setJSON(`club:${slug}:settings`, settings);
-        await store.setJSON(`club:${slug}:members`, []);
+        await store.setJSON(`club:${slug}:members`, [adminMember]);
         await store.setJSON(`club:${slug}:currentIndex`, 0);
         await store.setJSON(`club:${slug}:history`, []);
 

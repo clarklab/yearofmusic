@@ -9,7 +9,7 @@ export default async (req, context) => {
     }
 
     try {
-        const { password, clubSlug } = await req.json();
+        const { password, phone, clubSlug } = await req.json();
 
         // Validate clubSlug
         if (!clubSlug || typeof clubSlug !== 'string') {
@@ -32,9 +32,19 @@ export default async (req, context) => {
             });
         }
 
-        const isValid = password === settings.password;
+        // Clean phone number for comparison
+        const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
 
-        return new Response(JSON.stringify({ success: isValid }), {
+        // Check password and phone (if adminPhone exists in settings)
+        const passwordValid = password === settings.password;
+        const phoneValid = !settings.adminPhone || cleanPhone === settings.adminPhone;
+
+        const isValid = passwordValid && phoneValid;
+
+        return new Response(JSON.stringify({
+            success: isValid,
+            error: isValid ? null : 'Invalid phone or password'
+        }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });

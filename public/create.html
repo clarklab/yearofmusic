@@ -57,7 +57,30 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="password">Admin Password</label>
+                    <label for="adminName">Your Name</label>
+                    <input
+                        type="text"
+                        id="adminName"
+                        placeholder="e.g., Alex"
+                        required
+                        maxlength="50"
+                    >
+                    <small>You'll be the first member of the rotation</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="adminPhone">Your Phone Number</label>
+                    <input
+                        type="tel"
+                        id="adminPhone"
+                        placeholder="(555) 123-4567"
+                        required
+                    >
+                    <small>Used to login and receive reminders</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
                     <input
                         type="password"
                         id="password"
@@ -65,7 +88,6 @@
                         required
                         minlength="4"
                     >
-                    <small>You'll use this to manage the club</small>
                 </div>
 
                 <button type="submit" id="submitBtn" class="btn-primary" style="width: 100%; margin-top: 1rem;">
@@ -85,12 +107,32 @@
     <script>
         const clubNameInput = document.getElementById('clubName');
         const clubSlugInput = document.getElementById('clubSlug');
+        const adminPhoneInput = document.getElementById('adminPhone');
         const slugStatus = document.getElementById('slugStatus');
         const submitBtn = document.getElementById('submitBtn');
         const errorEl = document.getElementById('error');
 
         let slugCheckTimeout = null;
         let slugAvailable = false;
+
+        // Phone formatting
+        adminPhoneInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 10) value = value.slice(0, 10);
+            let formatted = '';
+            if (value.length > 0) {
+                formatted = '(' + value.substring(0, 3);
+                if (value.length >= 4) {
+                    formatted += ') ' + value.substring(3, 6);
+                    if (value.length >= 7) {
+                        formatted += '-' + value.substring(6, 10);
+                    }
+                } else if (value.length === 3) {
+                    formatted += ')';
+                }
+            }
+            e.target.value = formatted;
+        });
 
         // Auto-generate slug from name
         clubNameInput.addEventListener('input', () => {
@@ -151,6 +193,8 @@
 
             const name = clubNameInput.value.trim();
             const slug = clubSlugInput.value.trim();
+            const adminName = document.getElementById('adminName').value.trim();
+            const adminPhone = adminPhoneInput.value;
             const password = document.getElementById('password').value;
 
             if (!slugAvailable) {
@@ -165,7 +209,7 @@
                 const response = await fetch('/.netlify/functions/create-club', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, slug, password })
+                    body: JSON.stringify({ name, slug, password, adminName, adminPhone })
                 });
 
                 const result = await response.json();
