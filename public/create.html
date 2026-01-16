@@ -14,7 +14,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
 </head>
@@ -41,7 +41,7 @@
                 <div class="form-group">
                     <label for="clubSlug">Club URL</label>
                     <div style="display: flex; align-items: center; gap: 0.25rem;">
-                        <span style="color: #666; font-size: 0.9rem;">textclub.fun/</span>
+                        <span style="color: #000; font-size: 0.75rem;">textclub.fun/</span>
                         <input
                             type="text"
                             id="clubSlug"
@@ -77,7 +77,7 @@
             </form>
 
             <div style="margin-top: 1.5rem; text-align: center;">
-                <a href="/" style="color: #666; font-size: 0.9rem;">Back to home</a>
+                <a href="/" style="color: #000; font-size: 0.75rem; text-transform: uppercase;">Back to home</a>
             </div>
         </div>
     </div>
@@ -129,17 +129,17 @@
                     const result = await response.json();
 
                     if (result.available) {
-                        slugStatus.textContent = 'Available!';
-                        slugStatus.style.color = '#34a853';
+                        slugStatus.textContent = 'AVAILABLE';
+                        slugStatus.style.color = '#000';
                         slugAvailable = true;
                     } else {
-                        slugStatus.textContent = result.message || 'Not available';
-                        slugStatus.style.color = '#ea4335';
+                        slugStatus.textContent = result.message || 'NOT AVAILABLE';
+                        slugStatus.style.color = '#ff0000';
                         slugAvailable = false;
                     }
                 } catch (error) {
-                    slugStatus.textContent = 'Error checking availability';
-                    slugStatus.style.color = '#ea4335';
+                    slugStatus.textContent = 'ERROR';
+                    slugStatus.style.color = '#ff0000';
                     slugAvailable = false;
                 }
             }, 300);

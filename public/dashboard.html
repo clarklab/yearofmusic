@@ -14,7 +14,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
 </head>
@@ -25,9 +25,9 @@
             <button id="logoutBtn" class="btn-secondary"><span class="material-icons btn-icon">logout</span>Logout</button>
         </header>
 
-        <div style="margin: -1rem 0 1.5rem 0; display: flex; align-items: center; gap: 0.5rem; color: #666; font-size: 0.9rem;">
+        <div style="margin: -0.5rem 0 1rem 0; display: flex; align-items: center; gap: 0.5rem; color: #666; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">
             <span>Group SMS reminder tool</span>
-            <span style="background: #4285f4; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;">Admin</span>
+            <span style="background: #000; color: #fff; padding: 2px 6px; font-size: 0.625rem; font-weight: 700; border: 1px solid #000;">ADMIN</span>
         </div>
 
         <div class="status-card" id="statusCard">
@@ -117,9 +117,9 @@
             <div id="historyList" class="history-list"></div>
         </div>
 
-        <div class="card" style="background: #fff3e0; border: 1px solid #ffcc80;">
-            <div class="card-header">
-                <h2 style="color: #e65100;">Danger Zone</h2>
+        <div class="card" style="border-color: #ff0000;">
+            <div class="card-header" style="border-color: #ff0000;">
+                <h2 style="color: #ff0000;">Danger Zone</h2>
             </div>
             <button id="deleteClubBtn" class="btn-danger" style="width: 100%;">
                 <span class="material-icons btn-icon">delete_forever</span>
