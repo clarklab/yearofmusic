@@ -69,7 +69,7 @@ export default async (req, context) => {
         }
 
         // Reserved slugs
-        const reservedSlugs = ['create', 'admin', 'api', 'login', 'dashboard', 'settings', 'about', 'help'];
+        const reservedSlugs = ['a', 'create', 'admin', 'api', 'login', 'dashboard', 'settings', 'about', 'help'];
         if (reservedSlugs.includes(slug)) {
             return new Response(JSON.stringify({ error: 'This slug is reserved' }), {
                 status: 400,
