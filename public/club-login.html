@@ -77,16 +77,22 @@
             window.location.href = '/';
         }
 
-        // Fetch club info to display name
-        async function loadClubInfo() {
+        // Fetch club info to display name (with retry for newly created clubs)
+        async function loadClubInfo(retries = 3) {
             try {
                 const response = await fetch(`/.netlify/functions/get-club-info?clubSlug=${encodeURIComponent(clubSlug)}`);
                 if (response.ok) {
                     const club = await response.json();
                     document.getElementById('clubName').textContent = club.name;
                     document.title = `${club.name} - Rotato`;
+                    document.getElementById('error').textContent = '';
                 } else if (response.status === 404) {
-                    document.getElementById('error').textContent = 'Club not found';
+                    if (retries > 0) {
+                        // Retry after a short delay (handles race condition for new clubs)
+                        setTimeout(() => loadClubInfo(retries - 1), 500);
+                    } else {
+                        document.getElementById('error').textContent = 'Club not found';
+                    }
                 }
             } catch (error) {
                 console.error('Failed to load club info:', error);
