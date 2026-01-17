@@ -59,13 +59,15 @@ export default async (req, context) => {
 
         // Get details for each club
         const clubsWithDetails = [];
-        for (const club of clubs) {
-            try {
-                if (!club || !club.slug) {
-                    console.log('Skipping invalid club entry:', club);
-                    continue;
-                }
+        const errors = [];
 
+        for (const club of clubs) {
+            if (!club || !club.slug) {
+                errors.push({ club: club, error: 'Invalid club entry' });
+                continue;
+            }
+
+            try {
                 const members = await store.get(`club:${club.slug}:members`, { type: 'json' }) || [];
                 const history = await store.get(`club:${club.slug}:history`, { type: 'json' }) || [];
                 const settings = await store.get(`club:${club.slug}:settings`, { type: 'json' }) || {};
@@ -79,18 +81,17 @@ export default async (req, context) => {
                     memberCount: Array.isArray(members) ? members.length : 0,
                     lastSend: lastSend ? {
                         date: lastSend.date,
-                        to: lastSend.name || lastSend.to,  // handle both formats
+                        to: lastSend.name || lastSend.to,
                         success: lastSend.status === 'success' || lastSend.success
                     } : null,
                     paused: settings.paused || false
                 });
-                console.log(`Processed club: ${club.slug}`);
             } catch (clubError) {
-                console.error(`Error processing club ${club?.slug}:`, clubError);
+                errors.push({ club: club.slug, error: clubError.message });
             }
         }
 
-        return new Response(JSON.stringify({ clubs: clubsWithDetails }), {
+        return new Response(JSON.stringify({ clubs: clubsWithDetails, errors, totalInList: clubs.length }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });

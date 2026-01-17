@@ -102,12 +102,18 @@
             }
         }
 
-        function showDashboard(clubs) {
+        function showDashboard(data) {
+            const clubs = data.clubs || data;
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
 
             const totalMembers = clubs.reduce((sum, c) => sum + c.memberCount, 0);
-            document.getElementById('stats').textContent = `${clubs.length} clubs / ${totalMembers} total members`;
+            let stats = `${clubs.length} clubs / ${totalMembers} total members`;
+            if (data.totalInList) stats += ` (${data.totalInList} in list)`;
+            if (data.errors && data.errors.length > 0) {
+                stats += ` | ERRORS: ${JSON.stringify(data.errors)}`;
+            }
+            document.getElementById('stats').textContent = stats;
 
             const tbody = document.getElementById('clubsTable');
             tbody.innerHTML = clubs.map(club => {
