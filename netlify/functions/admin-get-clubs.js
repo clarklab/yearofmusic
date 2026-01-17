@@ -12,10 +12,22 @@ export default async (req, context) => {
     }
 
     try {
-        const { phone, password } = await req.json();
+        let body;
+        try {
+            body = await req.json();
+        } catch (e) {
+            return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const { phone, password } = body;
 
         // Check admin credentials
         const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
+        console.log('Admin login attempt:', cleanPhone, 'Expected:', ADMIN_PHONE);
+
         if (cleanPhone !== ADMIN_PHONE || password !== ADMIN_PASSWORD) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), {
                 status: 401,
@@ -27,28 +39,39 @@ export default async (req, context) => {
 
         // Get all clubs
         const clubs = await store.get('clubs', { type: 'json' }) || [];
+        console.log('Found clubs:', clubs.length);
 
         // Get details for each club
-        const clubsWithDetails = await Promise.all(clubs.map(async (club) => {
-            const members = await store.get(`club:${club.slug}:members`, { type: 'json' }) || [];
-            const history = await store.get(`club:${club.slug}:history`, { type: 'json' }) || [];
-            const settings = await store.get(`club:${club.slug}:settings`, { type: 'json' }) || {};
+        const clubsWithDetails = [];
+        for (const club of clubs) {
+            try {
+                if (!club || !club.slug) {
+                    console.log('Skipping invalid club entry:', club);
+                    continue;
+                }
 
-            const lastSend = history.length > 0 ? history[0] : null;
+                const members = await store.get(`club:${club.slug}:members`, { type: 'json' }) || [];
+                const history = await store.get(`club:${club.slug}:history`, { type: 'json' }) || [];
+                const settings = await store.get(`club:${club.slug}:settings`, { type: 'json' }) || {};
 
-            return {
-                slug: club.slug,
-                name: club.name,
-                createdAt: club.createdAt,
-                memberCount: members.length,
-                lastSend: lastSend ? {
-                    date: lastSend.date,
-                    to: lastSend.to,
-                    success: lastSend.success
-                } : null,
-                paused: settings.paused || false
-            };
-        }));
+                const lastSend = Array.isArray(history) && history.length > 0 ? history[0] : null;
+
+                clubsWithDetails.push({
+                    slug: club.slug,
+                    name: club.name || club.slug,
+                    createdAt: club.createdAt,
+                    memberCount: Array.isArray(members) ? members.length : 0,
+                    lastSend: lastSend ? {
+                        date: lastSend.date,
+                        to: lastSend.to,
+                        success: lastSend.success
+                    } : null,
+                    paused: settings.paused || false
+                });
+            } catch (clubError) {
+                console.error(`Error processing club ${club?.slug}:`, clubError);
+            }
+        }
 
         return new Response(JSON.stringify({ clubs: clubsWithDetails }), {
             status: 200,
