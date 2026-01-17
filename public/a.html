@@ -93,7 +93,8 @@
                 if (response.ok) {
                     credentials = { phone, password };
                     const data = await response.json();
-                    showDashboard(data.clubs);
+                    console.log('API response:', data);
+                    showDashboard(data);
                 } else {
                     document.getElementById('error').textContent = 'Invalid credentials';
                 }
@@ -103,7 +104,9 @@
         }
 
         function showDashboard(data) {
+            console.log('showDashboard data:', data);
             const clubs = data.clubs || data;
+            console.log('clubs array:', clubs);
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
 
