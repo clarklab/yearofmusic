@@ -1,5 +1,6 @@
 import { getStore } from '@netlify/blobs';
 
+const VERSION = 2;  // Increment to verify deployment
 const ADMIN_PHONE = '5125524631';
 const ADMIN_PASSWORD = 'cool85';
 
@@ -91,7 +92,7 @@ export default async (req, context) => {
             }
         }
 
-        return new Response(JSON.stringify({ clubs: clubsWithDetails, errors, totalInList: clubs.length }), {
+        return new Response(JSON.stringify({ version: VERSION, clubs: clubsWithDetails, errors, totalInList: clubs.length }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
