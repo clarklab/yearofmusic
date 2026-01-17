@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Rotato</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Space Mono', monospace;
+            background: #fff;
+            color: #000;
+            padding: 2rem;
+            font-size: 14px;
+        }
+        h1 { margin-bottom: 1rem; font-size: 1.25rem; text-transform: uppercase; letter-spacing: 2px; }
+        .login-form { max-width: 300px; margin-bottom: 2rem; }
+        input {
+            font-family: inherit;
+            font-size: 14px;
+            padding: 0.5rem;
+            border: 2px solid #000;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        button {
+            font-family: inherit;
+            font-size: 14px;
+            padding: 0.5rem 1rem;
+            background: #000;
+            color: #fff;
+            border: 2px solid #000;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        button:hover { background: #333; }
+        .error { color: red; margin-top: 0.5rem; font-size: 12px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+        th, td { border: 2px solid #000; padding: 0.5rem; text-align: left; }
+        th { background: #000; color: #fff; text-transform: uppercase; font-size: 11px; }
+        td { font-size: 12px; }
+        .success { color: green; }
+        .fail { color: red; }
+        .paused { opacity: 0.5; }
+        a { color: #000; }
+        .stat { font-size: 11px; color: #666; margin-bottom: 1rem; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <h1>Rotato Admin</h1>
+
+    <div id="loginSection" class="login-form">
+        <input type="tel" id="phone" placeholder="Phone">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <div id="error" class="error"></div>
+    </div>
+
+    <div id="dashboard" style="display: none;">
+        <div id="stats" class="stat"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Club</th>
+                    <th>Members</th>
+                    <th>Last Send</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="clubsTable"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let credentials = {};
+
+        async function login() {
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/.netlify/functions/admin-get-clubs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password })
+                });
+
+                if (response.ok) {
+                    credentials = { phone, password };
+                    const data = await response.json();
+                    showDashboard(data.clubs);
+                } else {
+                    document.getElementById('error').textContent = 'Invalid credentials';
+                }
+            } catch (err) {
+                document.getElementById('error').textContent = 'Login failed';
+            }
+        }
+
+        function showDashboard(clubs) {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+
+            const totalMembers = clubs.reduce((sum, c) => sum + c.memberCount, 0);
+            document.getElementById('stats').textContent = `${clubs.length} clubs / ${totalMembers} total members`;
+
+            const tbody = document.getElementById('clubsTable');
+            tbody.innerHTML = clubs.map(club => {
+                const lastSend = club.lastSend
+                    ? `${club.lastSend.to}<br><span style="color:#666">${new Date(club.lastSend.date).toLocaleDateString()}</span>`
+                    : '—';
+                const status = club.paused ? '<span class="fail">PAUSED</span>' : '<span class="success">ACTIVE</span>';
+                return `
+                    <tr class="${club.paused ? 'paused' : ''}">
+                        <td><a href="/${club.slug}/dashboard" target="_blank">${club.name}</a><br><span style="color:#666">/${club.slug}</span></td>
+                        <td>${club.memberCount}</td>
+                        <td>${lastSend}</td>
+                        <td>${status}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Auto-login if credentials in sessionStorage
+        const saved = sessionStorage.getItem('rotato-admin');
+        if (saved) {
+            const { phone, password } = JSON.parse(saved);
+            document.getElementById('phone').value = phone;
+            document.getElementById('password').value = password;
+        }
+
+        // Save on successful login
+        const origLogin = login;
+        login = async function() {
+            await origLogin();
+            if (credentials.phone) {
+                sessionStorage.setItem('rotato-admin', JSON.stringify(credentials));
+            }
+        };
+    </script>
+</body>
+</html>

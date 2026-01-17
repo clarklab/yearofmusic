@@ -2,6 +2,12 @@
   publish = "public"
   functions = "netlify/functions"
 
+# Admin dashboard
+[[redirects]]
+  from = "/a"
+  to = "/a.html"
+  status = 200
+
 # Scheduled function to send daily reminders
 # Runs every 15 minutes and checks if current time matches each club's sendTime setting
 [functions."scheduled-reminder"]
