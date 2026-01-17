@@ -37,9 +37,25 @@ export default async (req, context) => {
 
         const store = getStore('textclub-data');
 
-        // Get all clubs
-        const clubs = await store.get('clubs', { type: 'json' }) || [];
-        console.log('Found clubs:', clubs.length);
+        // Get all clubs from list
+        let clubs = await store.get('clubs', { type: 'json' }) || [];
+        console.log('Found clubs in list:', clubs.length);
+
+        // SAFEGUARD: Ensure yearofmusic is always in the list
+        const hasYearofmusic = clubs.some(c => c.slug === 'yearofmusic');
+        if (!hasYearofmusic) {
+            const yomSettings = await store.get('club:yearofmusic:settings', { type: 'json' });
+            if (yomSettings) {
+                console.log('SAFEGUARD: Adding missing yearofmusic to clubs list');
+                clubs.push({
+                    slug: 'yearofmusic',
+                    name: 'Year of Music',
+                    createdAt: '2024-01-01T00:00:00.000Z'
+                });
+                // Persist the fix
+                await store.setJSON('clubs', clubs);
+            }
+        }
 
         // Get details for each club
         const clubsWithDetails = [];
@@ -63,11 +79,12 @@ export default async (req, context) => {
                     memberCount: Array.isArray(members) ? members.length : 0,
                     lastSend: lastSend ? {
                         date: lastSend.date,
-                        to: lastSend.to,
-                        success: lastSend.success
+                        to: lastSend.name || lastSend.to,  // handle both formats
+                        success: lastSend.status === 'success' || lastSend.success
                     } : null,
                     paused: settings.paused || false
                 });
+                console.log(`Processed club: ${club.slug}`);
             } catch (clubError) {
                 console.error(`Error processing club ${club?.slug}:`, clubError);
             }
