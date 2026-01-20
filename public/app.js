@@ -15,6 +15,7 @@ if (!clubSlug || !sessionStorage.getItem(`textclub-auth-${clubSlug}`)) {
 let appData = null;
 let clubName = clubSlug; // Will be updated when data loads
 let highlightMemberId = null; // Track which member to highlight after refresh
+let isSubmittingMember = false; // Track in-flight add member requests
 
 // Toast notification system
 function showToast(message, type = 'success') {
@@ -174,33 +175,45 @@ cancelAddBtn.addEventListener('click', () => {
 
 addMemberForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    // Prevent double-submit
+    if (isSubmittingMember) {
+        console.log('Submission already in progress, ignoring duplicate request');
+        return;
+    }
+
     const name = document.getElementById('memberName').value;
     const phone = document.getElementById('memberPhone').value;
 
     // Show loading state
     const submitBtn = document.getElementById('submitAddBtn');
     const cancelBtn = document.getElementById('cancelAddBtn');
+    isSubmittingMember = true;
     submitBtn.classList.add('loading');
     submitBtn.disabled = true;
     cancelBtn.disabled = true;
 
-    const success = await addMember(name, phone);
+    try {
+        const success = await addMember(name, phone);
 
-    submitBtn.classList.remove('loading');
-    submitBtn.disabled = false;
-    cancelBtn.disabled = false;
+        if (success) {
+            // Close modal immediately and show updated list
+            addMemberModal.classList.remove('active');
+            addMemberForm.reset();
 
-    if (success) {
-        // Close modal immediately and show updated list
-        addMemberModal.classList.remove('active');
-        addMemberForm.reset();
+            // Reset modal state for next use
+            document.getElementById('addMemberFormView').style.display = 'block';
+            document.getElementById('addMemberConfirmation').style.display = 'none';
 
-        // Reset modal state for next use
-        document.getElementById('addMemberFormView').style.display = 'block';
-        document.getElementById('addMemberConfirmation').style.display = 'none';
-
-        // Ensure the UI is updated (it should already be from loadData in addMember)
-        renderDashboard();
+            // Ensure the UI is updated (it should already be from loadData in addMember)
+            renderDashboard();
+        }
+    } finally {
+        // Always reset state, even if error occurred
+        isSubmittingMember = false;
+        submitBtn.classList.remove('loading');
+        submitBtn.disabled = false;
+        cancelBtn.disabled = false;
     }
 });
 
@@ -508,19 +521,25 @@ async function addMember(name, phone) {
         const result = await response.json();
 
         if (response.ok && result.success) {
-            // Update local state directly
-            const newMember = {
-                id: result.memberId,
-                name,
-                phone: phone.replace(/\D/g, '')
-            };
-            appData.members.push(newMember);
-            appData.members.sort((a, b) => a.name.localeCompare(b.name));
+            const memberId = result.memberId;
 
-            highlightMemberId = result.memberId;
-            renderDashboard();
-            showToast(`${name} added to the group`);
-            return true;
+            // Refetch data from server to verify member was actually added
+            await loadData();
+
+            // Verify the member exists in the refreshed data
+            const memberExists = appData.members.some(m => m.id === memberId);
+
+            if (memberExists) {
+                highlightMemberId = memberId;
+                renderDashboard();
+                showToast(`${name} added to the group`);
+                return true;
+            } else {
+                // Member wasn't found after refetch - something went wrong
+                console.error('Member not found after successful add response:', memberId);
+                showToast('Member added but verification failed - please refresh', 'error');
+                return false;
+            }
         } else {
             showToast(result.error || 'Failed to add member', 'error');
             return false;
