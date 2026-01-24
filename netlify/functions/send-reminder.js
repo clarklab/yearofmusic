@@ -154,6 +154,12 @@ export default async (req, context) => {
             message = message + '\n\n' + funContent;
         }
 
+        // Log outgoing message for debugging
+        console.log(`[${clubSlug}] === OUTGOING SMS ===`);
+        console.log(`[${clubSlug}] To: ${currentMember.name} (${currentMember.phone})`);
+        console.log(`[${clubSlug}] Message: ${message}`);
+        console.log(`[${clubSlug}] === END MESSAGE ===`);
+
         // Send SMS via Textbelt with automatic retry for transient failures
         const textbeltResult = await sendSmsWithRetry(
             currentMember.phone,
@@ -184,12 +190,17 @@ export default async (req, context) => {
             await store.setJSON(`club:${clubSlug}:currentIndex`, currentIndex);
         }
 
+        // Log result
+        console.log(`[${clubSlug}] === SMS RESULT ===`);
         if (textbeltResult.success) {
             const retryInfo = textbeltResult.attempts > 1 ? ` (after ${textbeltResult.attempts} attempts)` : '';
-            console.log(`[${clubSlug}] SMS sent successfully to ${currentMember.name} (${currentMember.phone})${retryInfo}. Quota remaining: ${textbeltResult.quotaRemaining}`);
+            console.log(`[${clubSlug}] Status: SUCCESS${retryInfo}`);
         } else {
-            console.error(`[${clubSlug}] SMS FAILED to ${currentMember.name} (${currentMember.phone}) after ${textbeltResult.attempts || 1} attempt(s). Error: ${textbeltResult.error || 'Unknown error'}. Quota remaining: ${textbeltResult.quotaRemaining}`);
+            console.error(`[${clubSlug}] Status: FAILED after ${textbeltResult.attempts || 1} attempt(s)`);
+            console.error(`[${clubSlug}] Error: ${textbeltResult.error || 'Unknown error'}`);
         }
+        console.log(`[${clubSlug}] Quota remaining: ${textbeltResult.quotaRemaining}`);
+        console.log(`[${clubSlug}] === END RESULT ===`);
 
         return new Response(JSON.stringify({
             success: textbeltResult.success,
