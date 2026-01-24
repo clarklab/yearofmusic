@@ -162,7 +162,7 @@ export default async (req, context) => {
             2 // Max 2 retries (3 total attempts)
         );
 
-        // Log to history
+        // Log to history (including full message for debugging)
         const historyEntry = {
             date: new Date().toISOString(),
             name: currentMember.name,
@@ -170,7 +170,8 @@ export default async (req, context) => {
             status: textbeltResult.success ? 'success' : 'failed',
             error: textbeltResult.error || null,
             quotaRemaining: textbeltResult.quotaRemaining || null,
-            attempts: textbeltResult.attempts || 1
+            attempts: textbeltResult.attempts || 1,
+            message: message
         };
 
         history.unshift(historyEntry); // Add to beginning
