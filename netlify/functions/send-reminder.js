@@ -1,6 +1,83 @@
 import { getStore } from '@netlify/blobs';
 import { getRandomContent } from './fun-content.js';
 
+// Helper to delay execution
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Errors that should NOT be retried (permanent failures)
+const PERMANENT_ERRORS = [
+    'invalid phone number',
+    'invalid number',
+    'quota exceeded',
+    'out of quota',
+    'not enough credits',
+    'invalid api key',
+    'blocked number'
+];
+
+// Check if an error is permanent (shouldn't be retried)
+function isPermanentError(errorMessage) {
+    if (!errorMessage) return false;
+    const lowerError = errorMessage.toLowerCase();
+    return PERMANENT_ERRORS.some(pe => lowerError.includes(pe));
+}
+
+// Send SMS with retry logic for transient failures
+async function sendSmsWithRetry(phone, message, apiKey, maxRetries = 2) {
+    let lastError = null;
+    let lastResult = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch('https://textbelt.com/text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, message, key: apiKey })
+            });
+
+            const result = await response.json();
+            lastResult = result;
+
+            // If successful, return immediately
+            if (result.success) {
+                return { ...result, attempts: attempt + 1 };
+            }
+
+            // If permanent error, don't retry
+            if (isPermanentError(result.error)) {
+                console.log(`Permanent error detected, not retrying: ${result.error}`);
+                return { ...result, attempts: attempt + 1 };
+            }
+
+            // For transient errors, retry after delay
+            if (attempt < maxRetries) {
+                const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s exponential backoff
+                console.log(`SMS attempt ${attempt + 1} failed (${result.error}), retrying in ${waitTime}ms...`);
+                await delay(waitTime);
+            }
+
+            lastError = result.error;
+        } catch (error) {
+            lastError = error.message;
+
+            // Network errors are transient, retry
+            if (attempt < maxRetries) {
+                const waitTime = Math.pow(2, attempt) * 1000;
+                console.log(`SMS attempt ${attempt + 1} network error (${error.message}), retrying in ${waitTime}ms...`);
+                await delay(waitTime);
+            }
+        }
+    }
+
+    // All retries exhausted
+    return {
+        success: false,
+        error: lastError || 'Failed after multiple attempts',
+        quotaRemaining: lastResult?.quotaRemaining,
+        attempts: maxRetries + 1
+    };
+}
+
 export default async (req, context) => {
     if (req.method !== 'POST') {
         return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -77,18 +154,13 @@ export default async (req, context) => {
             message = message + '\n\n' + funContent;
         }
 
-        // Send SMS via Textbelt
-        const textbeltResponse = await fetch('https://textbelt.com/text', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                phone: currentMember.phone,
-                message: message,
-                key: process.env.TEXTBELT_API_KEY
-            })
-        });
-
-        const textbeltResult = await textbeltResponse.json();
+        // Send SMS via Textbelt with automatic retry for transient failures
+        const textbeltResult = await sendSmsWithRetry(
+            currentMember.phone,
+            message,
+            process.env.TEXTBELT_API_KEY,
+            2 // Max 2 retries (3 total attempts)
+        );
 
         // Log to history
         const historyEntry = {
@@ -97,7 +169,8 @@ export default async (req, context) => {
             phone: currentMember.phone,
             status: textbeltResult.success ? 'success' : 'failed',
             error: textbeltResult.error || null,
-            quotaRemaining: textbeltResult.quotaRemaining || null
+            quotaRemaining: textbeltResult.quotaRemaining || null,
+            attempts: textbeltResult.attempts || 1
         };
 
         history.unshift(historyEntry); // Add to beginning
@@ -110,7 +183,12 @@ export default async (req, context) => {
             await store.setJSON(`club:${clubSlug}:currentIndex`, currentIndex);
         }
 
-        console.log(`[${clubSlug}] Send result: ${textbeltResult.success ? 'success' : 'failed'} to ${currentMember.name}`);
+        if (textbeltResult.success) {
+            const retryInfo = textbeltResult.attempts > 1 ? ` (after ${textbeltResult.attempts} attempts)` : '';
+            console.log(`[${clubSlug}] SMS sent successfully to ${currentMember.name} (${currentMember.phone})${retryInfo}. Quota remaining: ${textbeltResult.quotaRemaining}`);
+        } else {
+            console.error(`[${clubSlug}] SMS FAILED to ${currentMember.name} (${currentMember.phone}) after ${textbeltResult.attempts || 1} attempt(s). Error: ${textbeltResult.error || 'Unknown error'}. Quota remaining: ${textbeltResult.quotaRemaining}`);
+        }
 
         return new Response(JSON.stringify({
             success: textbeltResult.success,

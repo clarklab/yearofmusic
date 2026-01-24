@@ -479,17 +479,21 @@ function renderHistory() {
         return;
     }
 
-    historyList.innerHTML = appData.history.slice(0, 20).map(item => `
+    historyList.innerHTML = appData.history.slice(0, 20).map(item => {
+        const attemptsInfo = item.attempts && item.attempts > 1 ? ` (${item.attempts} attempts)` : '';
+        return `
         <div class="history-item">
             <div>
                 <strong>${item.name}</strong> - ${formatPhone(item.phone)}
+                ${item.status === 'failed' && item.error ? `<div class="history-error">${item.error}${attemptsInfo}</div>` : ''}
             </div>
             <div>
                 <span class="history-date">${formatDate(item.date)}</span>
-                <span class="history-status status-${item.status}">${item.status}</span>
+                <span class="history-status status-${item.status}">${item.status}${item.status === 'success' && item.attempts > 1 ? attemptsInfo : ''}</span>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 async function addMember(name, phone) {
