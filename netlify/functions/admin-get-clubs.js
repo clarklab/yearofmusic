@@ -62,6 +62,13 @@ export default async (req, context) => {
         const clubsWithDetails = [];
         const errors = [];
 
+        // Aggregate send stats across all clubs
+        let totalSends = 0;
+        let successfulSends = 0;
+        let failedSends = 0;
+        let latestQuotaRemaining = null;
+        let latestSendDate = null;
+
         for (const club of clubs) {
             if (!club || !club.slug) {
                 errors.push({ club: club, error: 'Invalid club entry' });
@@ -74,6 +81,25 @@ export default async (req, context) => {
                 const settings = await store.get(`club:${club.slug}:settings`, { type: 'json' }) || {};
 
                 const lastSend = Array.isArray(history) && history.length > 0 ? history[0] : null;
+
+                // Aggregate stats from this club's history
+                if (Array.isArray(history)) {
+                    for (const entry of history) {
+                        totalSends++;
+                        if (entry.status === 'success' || entry.success) {
+                            successfulSends++;
+                        } else {
+                            failedSends++;
+                        }
+                        // Track the most recent quotaRemaining
+                        if (entry.quotaRemaining !== undefined && entry.date) {
+                            if (!latestSendDate || new Date(entry.date) > new Date(latestSendDate)) {
+                                latestSendDate = entry.date;
+                                latestQuotaRemaining = entry.quotaRemaining;
+                            }
+                        }
+                    }
+                }
 
                 clubsWithDetails.push({
                     slug: club.slug,
@@ -92,7 +118,14 @@ export default async (req, context) => {
             }
         }
 
-        return new Response(JSON.stringify({ version: VERSION, clubs: clubsWithDetails, errors, totalInList: clubs.length }), {
+        const sendStats = {
+            totalSends,
+            successfulSends,
+            failedSends,
+            quotaRemaining: latestQuotaRemaining
+        };
+
+        return new Response(JSON.stringify({ version: VERSION, clubs: clubsWithDetails, errors, totalInList: clubs.length, sendStats }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
