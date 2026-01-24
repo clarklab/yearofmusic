@@ -479,21 +479,65 @@ function renderHistory() {
         return;
     }
 
-    historyList.innerHTML = appData.history.slice(0, 20).map(item => {
+    historyList.innerHTML = appData.history.slice(0, 20).map((item, index) => {
         const attemptsInfo = item.attempts && item.attempts > 1 ? ` (${item.attempts} attempts)` : '';
+        const hasDetails = item.message || item.error || (item.attempts && item.attempts > 1);
+
         return `
-        <div class="history-item">
-            <div>
-                <strong>${item.name}</strong> - ${formatPhone(item.phone)}
-                ${item.status === 'failed' && item.error ? `<div class="history-error">${item.error}${attemptsInfo}</div>` : ''}
+        <div class="history-item ${hasDetails ? 'has-details' : ''}" ${hasDetails ? `onclick="toggleHistoryDetails(${index})"` : ''}>
+            <div class="history-summary">
+                <div class="history-main">
+                    <strong>${item.name}</strong>
+                    ${hasDetails ? '<span class="material-icons history-expand-icon">expand_more</span>' : ''}
+                </div>
+                <div class="history-meta">
+                    <span class="history-date">${formatDate(item.date)}</span>
+                    <span class="history-status status-${item.status}">${item.status}</span>
+                </div>
             </div>
-            <div>
-                <span class="history-date">${formatDate(item.date)}</span>
-                <span class="history-status status-${item.status}">${item.status}${item.status === 'success' && item.attempts > 1 ? attemptsInfo : ''}</span>
+            ${hasDetails ? `
+            <div class="history-details" id="history-details-${index}">
+                <div class="history-detail-row">
+                    <span class="history-detail-label">Phone:</span>
+                    <span>${formatPhone(item.phone)}</span>
+                </div>
+                ${item.attempts && item.attempts > 1 ? `
+                <div class="history-detail-row">
+                    <span class="history-detail-label">Attempts:</span>
+                    <span>${item.attempts}</span>
+                </div>
+                ` : ''}
+                ${item.error ? `
+                <div class="history-detail-row history-detail-error">
+                    <span class="history-detail-label">Error:</span>
+                    <span>${item.error}</span>
+                </div>
+                ` : ''}
+                ${item.message ? `
+                <div class="history-detail-row">
+                    <span class="history-detail-label">Message:</span>
+                </div>
+                <div class="history-message">${escapeHtml(item.message)}</div>
+                ` : ''}
             </div>
+            ` : ''}
         </div>
     `;
     }).join('');
+}
+
+function toggleHistoryDetails(index) {
+    const details = document.getElementById(`history-details-${index}`);
+    const item = details.closest('.history-item');
+    if (details && item) {
+        item.classList.toggle('expanded');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 async function addMember(name, phone) {
