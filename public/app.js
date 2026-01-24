@@ -480,22 +480,18 @@ function renderHistory() {
     }
 
     historyList.innerHTML = appData.history.slice(0, 20).map((item, index) => {
-        const attemptsInfo = item.attempts && item.attempts > 1 ? ` (${item.attempts} attempts)` : '';
-        const hasDetails = item.message || item.error || (item.attempts && item.attempts > 1);
-
         return `
-        <div class="history-item ${hasDetails ? 'has-details' : ''}" ${hasDetails ? `onclick="toggleHistoryDetails(${index})"` : ''}>
+        <div class="history-item has-details" onclick="toggleHistoryDetails(${index})">
             <div class="history-summary">
                 <div class="history-main">
                     <strong>${item.name}</strong>
-                    ${hasDetails ? '<span class="material-icons history-expand-icon">expand_more</span>' : ''}
+                    <span class="material-icons history-expand-icon">expand_more</span>
                 </div>
                 <div class="history-meta">
                     <span class="history-date">${formatDate(item.date)}</span>
                     <span class="history-status status-${item.status}">${item.status}</span>
                 </div>
             </div>
-            ${hasDetails ? `
             <div class="history-details" id="history-details-${index}">
                 <div class="history-detail-row">
                     <span class="history-detail-label">Phone:</span>
@@ -518,9 +514,12 @@ function renderHistory() {
                     <span class="history-detail-label">Message:</span>
                 </div>
                 <div class="history-message">${escapeHtml(item.message)}</div>
-                ` : ''}
+                ` : `
+                <div class="history-detail-row history-detail-note">
+                    <span>(Message content not available for older entries)</span>
+                </div>
+                `}
             </div>
-            ` : ''}
         </div>
     `;
     }).join('');
