@@ -536,6 +536,13 @@ textarea:focus {
     color: var(--danger);
 }
 
+.history-error {
+    font-size: 0.75rem;
+    color: var(--danger);
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
 /* Modal */
 .modal {
     display: none;
