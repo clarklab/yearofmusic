@@ -1,6 +1,13 @@
 import { getStore } from '@netlify/blobs';
 import { getRandomContent } from './fun-content.js';
 
+// RETRY STRATEGY (two tiers):
+// 1. IMMEDIATE (network errors only): If request doesn't reach Textbelt
+//    (timeout, connection refused), retry up to 2 times with exponential backoff.
+// 2. DEFERRED (content/API errors): If Textbelt rejects the message (e.g.,
+//    "URL detected"), schedule retry in 15 min with fresh content. Max 3 attempts,
+//    then notify admin.
+
 // Helper to delay execution
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -9,28 +16,10 @@ const ADMIN_PHONE = '5125524631';
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 15 * 60 * 1000; // 15 minutes
 
-// Errors that should NOT be retried (permanent failures)
-const PERMANENT_ERRORS = [
-    'invalid phone number',
-    'invalid number',
-    'quota exceeded',
-    'out of quota',
-    'not enough credits',
-    'invalid api key',
-    'blocked number'
-];
-
-// Check if an error is permanent (shouldn't be retried)
-function isPermanentError(errorMessage) {
-    if (!errorMessage) return false;
-    const lowerError = errorMessage.toLowerCase();
-    return PERMANENT_ERRORS.some(pe => lowerError.includes(pe));
-}
-
-// Send SMS with immediate retry logic for transient failures
-async function sendSmsWithRetry(phone, message, apiKey, maxRetries = 2) {
+// Send SMS with immediate retry ONLY for network errors.
+// API rejections (success: false) return immediately - deferred retry handles those.
+async function sendSmsWithNetworkRetry(phone, message, apiKey, maxRetries = 2) {
     let lastError = null;
-    let lastResult = null;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
@@ -41,44 +30,26 @@ async function sendSmsWithRetry(phone, message, apiKey, maxRetries = 2) {
             });
 
             const result = await response.json();
-            lastResult = result;
 
-            // If successful, return immediately
-            if (result.success) {
-                return { ...result, attempts: attempt + 1 };
-            }
-
-            // If permanent error, don't retry
-            if (isPermanentError(result.error)) {
-                console.log(`Permanent error detected, not retrying: ${result.error}`);
-                return { ...result, attempts: attempt + 1 };
-            }
-
-            // For transient errors, retry after delay
-            if (attempt < maxRetries) {
-                const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s exponential backoff
-                console.log(`SMS attempt ${attempt + 1} failed (${result.error}), retrying in ${waitTime}ms...`);
-                await delay(waitTime);
-            }
-
-            lastError = result.error;
+            // API responded - return immediately (success or failure).
+            // If failure, deferred retry will handle it with fresh content.
+            return { ...result, attempts: attempt + 1 };
         } catch (error) {
+            // Network error (timeout, connection refused, etc.) - retry immediately
             lastError = error.message;
 
-            // Network errors are transient, retry
             if (attempt < maxRetries) {
-                const waitTime = Math.pow(2, attempt) * 1000;
+                const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s exponential backoff
                 console.log(`SMS attempt ${attempt + 1} network error (${error.message}), retrying in ${waitTime}ms...`);
                 await delay(waitTime);
             }
         }
     }
 
-    // All retries exhausted
+    // All network retries exhausted
     return {
         success: false,
-        error: lastError || 'Failed after multiple attempts',
-        quotaRemaining: lastResult?.quotaRemaining,
+        error: lastError || 'Network error after multiple attempts',
         attempts: maxRetries + 1
     };
 }
@@ -209,8 +180,8 @@ export default async (req, context) => {
             message = message + '\n\n' + funContent;
         }
 
-        // Send SMS via Textbelt with immediate retry for transient failures
-        const textbeltResult = await sendSmsWithRetry(
+        // Send SMS via Textbelt with immediate retry for network errors only
+        const textbeltResult = await sendSmsWithNetworkRetry(
             targetMember.phone,
             message,
             process.env.TEXTBELT_API_KEY,
