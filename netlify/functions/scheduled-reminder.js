@@ -50,6 +50,57 @@ async function processClub(clubSlug, store) {
 
         console.log(`[${clubSlug}] Local time: ${localTime.hours}:${String(localTime.minutes).padStart(2, '0')} (${timezone})`);
 
+        // Check for pending retry
+        const retryState = await store.get(`club:${clubSlug}:retryState`, { type: 'json' });
+
+        if (retryState) {
+            // Check if retry is from a previous day (stale)
+            if (retryState.dateString !== localTime.dateString) {
+                console.log(`[${clubSlug}] Stale retry from ${retryState.dateString}, clearing`);
+                await store.delete(`club:${clubSlug}:retryState`);
+                // Continue with normal processing
+            } else {
+                // Check if it's time to retry
+                const now = new Date();
+                const retryTime = new Date(retryState.nextRetryTime);
+
+                if (now >= retryTime) {
+                    console.log(`[${clubSlug}] Time to retry (attempt ${retryState.attemptNumber})`);
+
+                    // Call send-reminder with retry context
+                    const reminderUrl = process.env.URL || 'http://localhost:8888';
+                    const response = await fetch(`${reminderUrl}/.netlify/functions/send-reminder`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            manual: false,
+                            clubSlug,
+                            isRetry: true,
+                            retryContext: {
+                                attemptNumber: retryState.attemptNumber,
+                                originalMember: retryState.originalMember
+                            }
+                        })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log(`[${clubSlug}] Retry result:`, result);
+                    } else {
+                        const text = await response.text();
+                        console.error(`[${clubSlug}] Retry failed:`, response.status, text.substring(0, 200));
+                    }
+                } else {
+                    console.log(`[${clubSlug}] Retry pending, not time yet (next: ${retryState.nextRetryTime})`);
+                }
+
+                // Whether we retried or are waiting, don't do a normal send
+                return;
+            }
+        }
+
+        // Normal send logic below (only reached if no active retry)
+
         // Check if we already sent today for this club
         const lastSendDate = await store.get(`club:${clubSlug}:lastScheduledSendDate`, { type: 'text' });
         if (lastSendDate === localTime.dateString) {
