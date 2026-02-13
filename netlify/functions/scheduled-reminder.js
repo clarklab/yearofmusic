@@ -20,12 +20,13 @@ function parseTimeString(timeStr) {
     return { hours, minutes };
 }
 
-// Check if current time is within the 15-minute window starting at targetTime
+// Check if current time is at or past the target send time
+// No upper bound needed — lastScheduledSendDate check prevents double-sending
 function isTimeToSend(currentHours, currentMinutes, targetHours, targetMinutes) {
     const currentTotalMinutes = currentHours * 60 + currentMinutes;
     const targetTotalMinutes = targetHours * 60 + targetMinutes;
     const diff = currentTotalMinutes - targetTotalMinutes;
-    return diff >= 0 && diff < 15;
+    return diff >= 0;
 }
 
 // Process a single club's reminder
