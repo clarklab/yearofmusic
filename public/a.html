@@ -81,6 +81,99 @@
         .stat-box.quota .value {
             color: #0066cc;
         }
+        .history-section {
+            margin-top: 1.5rem;
+            border-top: 1px solid #ccc;
+            padding-top: 1rem;
+        }
+        .history-section h3 {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .history-item {
+            display: flex;
+            flex-direction: column;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            background: #fff;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .history-item:hover {
+            background: #fafafa;
+        }
+        .history-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-main {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .history-club {
+            background: #eee;
+            padding: 0.125rem 0.375rem;
+            font-size: 9px;
+            text-transform: uppercase;
+        }
+        .history-meta {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .history-date {
+            color: #666;
+        }
+        .history-status {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 10px;
+        }
+        .history-status.status-success { color: green; }
+        .history-status.status-failed { color: red; }
+        .history-details {
+            display: none;
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #eee;
+            font-size: 10px;
+        }
+        .history-item.expanded .history-details {
+            display: block;
+        }
+        .history-detail-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+        .history-detail-label {
+            font-weight: 700;
+            color: #666;
+            min-width: 60px;
+        }
+        .history-detail-error {
+            color: red;
+        }
+        .history-message {
+            background: #f5f5f5;
+            padding: 0.5rem;
+            margin-top: 0.25rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 10px;
+        }
     </style>
 </head>
 <body>
@@ -126,6 +219,10 @@
                     <div class="value" id="quotaRemaining">—</div>
                     <div class="label">Texts Remaining</div>
                 </div>
+            </div>
+            <div class="history-section">
+                <h3>Send Log</h3>
+                <div class="history-list" id="historyList"></div>
             </div>
         </div>
     </div>
@@ -194,7 +291,79 @@
                 document.getElementById('successfulSends').textContent = data.sendStats.successfulSends || 0;
                 document.getElementById('failedSends').textContent = data.sendStats.failedSends || 0;
                 document.getElementById('quotaRemaining').textContent = data.sendStats.quotaRemaining !== null ? data.sendStats.quotaRemaining : '—';
+
+                // Render history list
+                renderHistory(data.sendStats.history || []);
             }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderHistory(history) {
+            const historyList = document.getElementById('historyList');
+            if (!history || history.length === 0) {
+                historyList.innerHTML = '<div style="color:#666;font-size:11px;">No send history</div>';
+                return;
+            }
+
+            historyList.innerHTML = history.map((item, index) => {
+                const status = item.status || (item.success ? 'success' : 'failed');
+                return `
+                    <div class="history-item" onclick="toggleHistory(${index})" id="history-${index}">
+                        <div class="history-summary">
+                            <div class="history-main">
+                                <span class="history-club">${escapeHtml(item.clubSlug)}</span>
+                                <span>${escapeHtml(item.name)}</span>
+                            </div>
+                            <div class="history-meta">
+                                <span class="history-date">${formatDate(item.date)}</span>
+                                <span class="history-status status-${status}">${status}</span>
+                            </div>
+                        </div>
+                        <div class="history-details">
+                            <div class="history-detail-row">
+                                <span class="history-detail-label">Phone:</span>
+                                <span>${escapeHtml(item.phone)}</span>
+                            </div>
+                            <div class="history-detail-row">
+                                <span class="history-detail-label">Attempts:</span>
+                                <span>${item.attempts || 1}</span>
+                            </div>
+                            ${item.error ? `
+                            <div class="history-detail-row history-detail-error">
+                                <span class="history-detail-label">Error:</span>
+                                <span>${escapeHtml(item.error)}</span>
+                            </div>
+                            ` : ''}
+                            ${item.quotaRemaining !== undefined ? `
+                            <div class="history-detail-row">
+                                <span class="history-detail-label">Quota:</span>
+                                <span>${item.quotaRemaining} remaining</span>
+                            </div>
+                            ` : ''}
+                            <div class="history-detail-row">
+                                <span class="history-detail-label">Message:</span>
+                            </div>
+                            <div class="history-message">${escapeHtml(item.message)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleHistory(index) {
+            const item = document.getElementById(`history-${index}`);
+            item.classList.toggle('expanded');
         }
 
         // Auto-login if credentials in sessionStorage

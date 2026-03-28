@@ -68,6 +68,7 @@ export default async (req, context) => {
         let failedSends = 0;
         let latestQuotaRemaining = null;
         let latestSendDate = null;
+        const allHistory = [];
 
         for (const club of clubs) {
             if (!club || !club.slug) {
@@ -98,6 +99,12 @@ export default async (req, context) => {
                                 latestQuotaRemaining = entry.quotaRemaining;
                             }
                         }
+                        // Add to combined history with club info
+                        allHistory.push({
+                            ...entry,
+                            clubSlug: club.slug,
+                            clubName: club.name || club.slug
+                        });
                     }
                 }
 
@@ -118,11 +125,15 @@ export default async (req, context) => {
             }
         }
 
+        // Sort all history by date (newest first)
+        allHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+
         const sendStats = {
             totalSends,
             successfulSends,
             failedSends,
-            quotaRemaining: latestQuotaRemaining
+            quotaRemaining: latestQuotaRemaining,
+            history: allHistory
         };
 
         return new Response(JSON.stringify({ version: VERSION, clubs: clubsWithDetails, errors, totalInList: clubs.length, sendStats }), {
