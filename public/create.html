@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create a Club - Rotato</title>
+    <meta name="description" content="Create your own Rotato for group SMS reminders.">
+    <meta name="robots" content="noindex, nofollow">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-card" style="max-width: 420px;">
+            <a href="/" style="text-decoration: none; color: inherit;">
+                <pre class="ascii-logo">      ░░░░░░
+   ░░░░▒▒▒▒▒▒▒▒░
+░░░▒░▒▒▒▒▒▒▒▒▒▓▓▒
+░▒░░░▒▒▒▒▒▒▒▒▒▓▓▓▓░
+░▒▒▒▒▒▒▒▒▒▒▒▓▓▓▓▓▓▒░
+░▓▒▒▒▒▒▒▒▓▓▓▓▓▓▓▒░░
+ ░▒▓▓▓▓▓▓▓▓▓▓▒▒░
+   ░░░░░░░░░        </pre>
+                <h1>Rotato</h1>
+            </a>
+            <p class="subtitle">Create a new club</p>
+
+            <form id="createForm">
+                <div class="form-group">
+                    <label for="clubName">Club Name</label>
+                    <input
+                        type="text"
+                        id="clubName"
+                        placeholder="e.g., Song of the Day"
+                        required
+                        maxlength="50"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="clubSlug">Club URL</label>
+                    <div style="display: flex; align-items: center; gap: 0.25rem;">
+                        <span style="color: #000; font-size: 0.75rem;">rotato.club/</span>
+                        <input
+                            type="text"
+                            id="clubSlug"
+                            placeholder="song-of-the-day"
+                            required
+                            pattern="[a-z0-9][a-z0-9-]*[a-z0-9]|[a-z0-9]"
+                            minlength="2"
+                            maxlength="30"
+                            style="flex: 1;"
+                        >
+                    </div>
+                    <small id="slugStatus" style="color: #666;"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="adminName">Your Name</label>
+                    <input
+                        type="text"
+                        id="adminName"
+                        placeholder="e.g., Alex"
+                        required
+                        maxlength="50"
+                    >
+                    <small>You'll be the first member of the rotation</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="adminPhone">Your Phone Number</label>
+                    <input
+                        type="tel"
+                        id="adminPhone"
+                        placeholder="(555) 123-4567"
+                        required
+                    >
+                    <small>Used to login and receive reminders</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="At least 4 characters"
+                        required
+                        minlength="4"
+                    >
+                </div>
+
+                <button type="submit" id="submitBtn" class="btn-primary" style="width: 100%; margin-top: 1rem;">
+                    <span class="material-icons btn-icon">add</span>
+                    Create Club
+                </button>
+
+                <p id="error" class="error"></p>
+            </form>
+
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <a href="/" style="color: #000; font-size: 0.75rem; text-transform: uppercase;">Back to home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const clubNameInput = document.getElementById('clubName');
+        const clubSlugInput = document.getElementById('clubSlug');
+        const adminPhoneInput = document.getElementById('adminPhone');
+        const slugStatus = document.getElementById('slugStatus');
+        const submitBtn = document.getElementById('submitBtn');
+        const errorEl = document.getElementById('error');
+
+        let slugCheckTimeout = null;
+        let slugAvailable = false;
+
+        // Phone formatting
+        adminPhoneInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 10) value = value.slice(0, 10);
+            let formatted = '';
+            if (value.length > 0) {
+                formatted = '(' + value.substring(0, 3);
+                if (value.length >= 4) {
+                    formatted += ') ' + value.substring(3, 6);
+                    if (value.length >= 7) {
+                        formatted += '-' + value.substring(6, 10);
+                    }
+                } else if (value.length === 3) {
+                    formatted += ')';
+                }
+            }
+            e.target.value = formatted;
+        });
+
+        // Auto-generate slug from name
+        clubNameInput.addEventListener('input', () => {
+            const name = clubNameInput.value;
+            const slug = name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '')
+                .slice(0, 30);
+            clubSlugInput.value = slug;
+            checkSlug(slug);
+        });
+
+        // Check slug availability on manual input
+        clubSlugInput.addEventListener('input', () => {
+            const slug = clubSlugInput.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+            clubSlugInput.value = slug;
+            checkSlug(slug);
+        });
+
+        function checkSlug(slug) {
+            if (slugCheckTimeout) clearTimeout(slugCheckTimeout);
+
+            if (!slug || slug.length < 2) {
+                slugStatus.textContent = '';
+                slugAvailable = false;
+                return;
+            }
+
+            slugStatus.textContent = 'Checking...';
+            slugStatus.style.color = '#666';
+
+            slugCheckTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/.netlify/functions/check-slug?slug=${encodeURIComponent(slug)}`);
+                    const result = await response.json();
+
+                    if (result.available) {
+                        slugStatus.textContent = 'AVAILABLE';
+                        slugStatus.style.color = '#000';
+                        slugAvailable = true;
+                    } else {
+                        slugStatus.textContent = result.message || 'NOT AVAILABLE';
+                        slugStatus.style.color = '#ff0000';
+                        slugAvailable = false;
+                    }
+                } catch (error) {
+                    slugStatus.textContent = 'ERROR';
+                    slugStatus.style.color = '#ff0000';
+                    slugAvailable = false;
+                }
+            }, 300);
+        }
+
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorEl.textContent = '';
+
+            const name = clubNameInput.value.trim();
+            const slug = clubSlugInput.value.trim();
+            const adminName = document.getElementById('adminName').value.trim();
+            const adminPhone = adminPhoneInput.value;
+            const password = document.getElementById('password').value;
+
+            if (!slugAvailable) {
+                errorEl.textContent = 'Please choose an available club URL';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+
+            try {
+                const response = await fetch('/.netlify/functions/create-club', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, slug, password, adminName, adminPhone })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Redirect to new club's login page
+                    window.location.href = `/${slug}`;
+                } else {
+                    errorEl.textContent = result.error || 'Failed to create club';
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('loading');
+                }
+            } catch (error) {
+                errorEl.textContent = 'Failed to create club. Please try again.';
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+            }
+        });
+    </script>
+</body>
+</html>

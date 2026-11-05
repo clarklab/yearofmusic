@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Rotato</title>
+    <meta name="description" content="Manage your Rotato group members and daily reminder settings.">
+    <meta name="robots" content="noindex, nofollow">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <pre class="ascii-logo">      ░░░░░░
+   ░░░░▒▒▒▒▒▒▒▒░
+░░░▒░▒▒▒▒▒▒▒▒▒▓▓▒
+░▒░░░▒▒▒▒▒▒▒▒▒▓▓▓▓░
+░▒▒▒▒▒▒▒▒▒▒▒▓▓▓▓▓▓▒░
+░▓▒▒▒▒▒▒▒▓▓▓▓▓▓▓▒░░
+ ░▒▓▓▓▓▓▓▓▓▓▓▒▒░
+   ░░░░░░░░░        </pre>
+                <h1><span id="clubName">Rotato</span></h1>
+            </div>
+            <button id="logoutBtn" class="btn-secondary"><span class="material-icons btn-icon">logout</span>Logout</button>
+        </header>
+
+        <div style="margin: -0.5rem 0 1rem 0; display: flex; align-items: center; gap: 0.5rem; color: #666; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">
+            <span>Group SMS reminder tool</span>
+            <span style="background: #000; color: #fff; padding: 2px 6px; font-size: 0.625rem; font-weight: 700; border: 1px solid #000;">ADMIN</span>
+        </div>
+
+        <div class="status-card" id="statusCard">
+            <div class="status-info">
+                <p class="status-label">Last Sent:</p>
+                <p id="lastSent" class="status-value">-</p>
+            </div>
+            <div class="status-info">
+                <p class="status-label">Next Up:</p>
+                <p id="nextUp" class="status-value">-</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Group Members<span id="memberCount" class="count-pill">0</span></h2>
+                <button id="addMemberBtn" class="btn-primary"><span class="material-icons btn-icon">person_add</span>Add Member</button>
+            </div>
+            <div id="membersList" class="members-list"></div>
+        </div>
+
+        <div class="card">
+            <h2>Actions</h2>
+            <button id="manualSendBtn" class="btn-action"><span class="material-icons btn-icon">send</span>Send Reminder Now</button>
+            <button id="skipTurnBtn" class="btn-action"><span class="material-icons btn-icon">skip_next</span>Skip Next Person</button>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Settings</h2>
+            </div>
+            <div id="settingsPanel" class="settings-panel">
+                <div class="form-group">
+                    <label for="sendTime">Send Time (Weekdays):</label>
+                    <input type="time" id="sendTime">
+                </div>
+                <div class="form-group">
+                    <label for="timezone">Timezone:</label>
+                    <select id="timezone">
+                        <option value="America/Chicago">Central (CST/CDT)</option>
+                        <option value="America/New_York">Eastern (EST/EDT)</option>
+                        <option value="America/Denver">Mountain (MST/MDT)</option>
+                        <option value="America/Los_Angeles">Pacific (PST/PDT)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="sendOnWeekendsToggle">
+                        <span class="toggle-text">Send on weekends</span>
+                    </label>
+                </div>
+                <div class="form-group" id="weekendTimeGroup" style="display: none;">
+                    <label for="weekendSendTime">Send Time (Weekends):</label>
+                    <input type="time" id="weekendSendTime">
+                </div>
+                <div class="form-group">
+                    <label for="messageTemplate">Message Template:</label>
+                    <textarea id="messageTemplate" rows="4" placeholder="Use {name} for person's name"></textarea>
+                    <small>Use {name} to insert the person's name</small>
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="pausedToggle">
+                        <span class="toggle-text">Pause Daily Reminders</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="includeJokeToggle">
+                        <span class="toggle-text">Include Joke of the Day</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="includeHoroscopeToggle">
+                        <span class="toggle-text">Include Daily Horoscope</span>
+                    </label>
+                </div>
+                <button id="saveSettingsBtn" class="btn-primary" style="width: 100%;">Save Settings</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Send History</h2>
+                <span id="historyQuota" class="history-quota"></span>
+            </div>
+            <div id="historyList" class="history-list"></div>
+        </div>
+
+        <div class="card" style="border-color: #ff0000;">
+            <div class="card-header" style="border-color: #ff0000;">
+                <h2 style="color: #ff0000;">Danger Zone</h2>
+            </div>
+            <button id="deleteClubBtn" class="btn-danger" style="width: 100%;">
+                <span class="material-icons btn-icon">delete_forever</span>
+                Delete This Club
+            </button>
+        </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div id="addMemberModal" class="modal">
+        <div class="modal-content">
+            <div id="addMemberFormView">
+                <h3>Add Member</h3>
+                <form id="addMemberForm">
+                    <div class="form-group">
+                        <label for="memberName">Name:</label>
+                        <input type="text" id="memberName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="memberPhone">Phone Number:</label>
+                        <input type="tel" id="memberPhone" placeholder="5551234567" required>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" id="cancelAddBtn" class="btn-secondary">Cancel</button>
+                        <button type="submit" id="submitAddBtn" class="btn-primary"><span class="material-icons btn-icon">person_add</span>Add</button>
+                    </div>
+                </form>
+            </div>
+            <div id="addMemberConfirmation" class="confirmation-message" style="display: none;">
+                <div class="confirmation-content">
+                    <span class="material-icons">check_circle</span>
+                    <h3>Member Added!</h3>
+                    <p id="confirmationText"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Member Modal -->
+    <div id="editMemberModal" class="modal">
+        <div class="modal-content">
+            <h3>Edit Member</h3>
+            <form id="editMemberForm">
+                <input type="hidden" id="editMemberId">
+                <div class="form-group">
+                    <label for="editMemberName">Name:</label>
+                    <input type="text" id="editMemberName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editMemberPhone">Phone Number:</label>
+                    <input type="tel" id="editMemberPhone" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelEditBtn" class="btn-secondary">Cancel</button>
+                    <button type="submit" id="submitEditBtn" class="btn-primary"><span class="material-icons btn-icon">save</span>Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Remove Member Confirmation Modal -->
+    <div id="removeMemberModal" class="modal">
+        <div class="modal-content">
+            <h3>Remove Member</h3>
+            <p id="removeConfirmText">Are you sure you want to remove this member?</p>
+            <div class="modal-actions">
+                <button type="button" id="cancelRemoveBtn" class="btn-secondary">Cancel</button>
+                <button type="button" id="confirmRemoveBtn" class="btn-danger"><span class="material-icons btn-icon">delete</span>Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Club Confirmation Modal -->
+    <div id="deleteClubModal" class="modal">
+        <div class="modal-content">
+            <h3>Delete Club</h3>
+            <p>This action cannot be undone. All members and history will be permanently deleted.</p>
+            <div class="form-group">
+                <label for="deleteConfirmPassword">Enter your password to confirm:</label>
+                <input type="password" id="deleteConfirmPassword" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="cancelDeleteBtn" class="btn-secondary">Cancel</button>
+                <button type="button" id="confirmDeleteBtn" class="btn-danger"><span class="material-icons btn-icon">delete_forever</span>Delete Forever</button>
+            </div>
+            <p id="deleteError" class="error"></p>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

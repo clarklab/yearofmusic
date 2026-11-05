@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Rotato</title>
+    <meta name="description" content="Login to your Rotato admin dashboard.">
+    <meta name="robots" content="noindex, nofollow">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-card">
+            <a href="/" style="text-decoration: none; color: inherit;">
+                <pre class="ascii-logo">      ░░░░░░
+   ░░░░▒▒▒▒▒▒▒▒░
+░░░▒░▒▒▒▒▒▒▒▒▒▓▓▒
+░▒░░░▒▒▒▒▒▒▒▒▒▓▓▓▓░
+░▒▒▒▒▒▒▒▒▒▒▒▓▓▓▓▓▓▒░
+░▓▒▒▒▒▒▒▒▓▓▓▓▓▓▓▒░░
+ ░▒▓▓▓▓▓▓▓▓▓▓▒▒░
+   ░░░░░░░░░        </pre>
+                <h1><span id="clubName">Rotato</span></h1>
+            </a>
+            <p class="subtitle">Admin Dashboard</p>
+
+            <div class="features-list">
+                <div class="feature-item">
+                    <span class="material-icons feature-icon">sms</span>
+                    <span class="feature-text">Simple daily reminders via SMS</span>
+                </div>
+                <div class="feature-item">
+                    <span class="material-icons feature-icon">groups</span>
+                    <span class="feature-text">Manage the group list with ease</span>
+                </div>
+                <div class="feature-item">
+                    <span class="material-icons feature-icon">settings</span>
+                    <span class="feature-text">Time/date/message settings</span>
+                </div>
+            </div>
+
+            <form id="loginForm">
+                <input
+                    type="tel"
+                    id="phone"
+                    placeholder="Phone number"
+                    required
+                    autocomplete="tel"
+                    style="margin-bottom: 0.5rem;"
+                >
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Password"
+                    required
+                    autocomplete="current-password"
+                >
+                <button type="submit">Login</button>
+                <p id="error" class="error"></p>
+            </form>
+
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <a href="/" style="color: #000; font-size: 0.75rem; text-transform: uppercase;">Back to home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Extract club slug from URL path
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const clubSlug = pathParts[0];
+
+        if (!clubSlug) {
+            window.location.href = '/';
+        }
+
+        // Fetch club info to display name (with retry for newly created clubs)
+        async function loadClubInfo(retries = 3) {
+            try {
+                const response = await fetch(`/.netlify/functions/get-club-info?clubSlug=${encodeURIComponent(clubSlug)}`);
+                if (response.ok) {
+                    const club = await response.json();
+                    document.getElementById('clubName').textContent = club.name;
+                    document.title = `${club.name} - Rotato`;
+                    document.getElementById('error').textContent = '';
+                } else if (response.status === 404) {
+                    if (retries > 0) {
+                        // Retry after a short delay (handles race condition for new clubs)
+                        setTimeout(() => loadClubInfo(retries - 1), 500);
+                    } else {
+                        document.getElementById('error').textContent = 'Club not found';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load club info:', error);
+            }
+        }
+
+        loadClubInfo();
+
+        // Phone formatting
+        const phoneInput = document.getElementById('phone');
+        phoneInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 10) value = value.slice(0, 10);
+            let formatted = '';
+            if (value.length > 0) {
+                formatted = '(' + value.substring(0, 3);
+                if (value.length >= 4) {
+                    formatted += ') ' + value.substring(3, 6);
+                    if (value.length >= 7) {
+                        formatted += '-' + value.substring(6, 10);
+                    }
+                } else if (value.length === 3) {
+                    formatted += ')';
+                }
+            }
+            e.target.value = formatted;
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phone = phoneInput.value;
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('error');
+
+            try {
+                const response = await fetch('/.netlify/functions/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password, clubSlug })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    sessionStorage.setItem(`textclub-auth-${clubSlug}`, data.token);
+                    window.location.href = `/${clubSlug}/dashboard`;
+                } else {
+                    errorEl.textContent = data.error || 'Invalid phone or password';
+                }
+            } catch (error) {
+                errorEl.textContent = 'Login failed. Please try again.';
+            }
+        });
+    </script>
+</body>
+</html>

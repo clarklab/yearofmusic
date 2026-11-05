@@ -1,0 +1,8 @@
+node_modules/
+.netlify/
+.env
+*.log
+.DS_Store
+
+# Backup files (contain sensitive data)
+backup-*.json

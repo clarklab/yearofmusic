@@ -1,0 +1,23 @@
+{
+  "name": "rotato",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Multi-tenant group SMS reminder platform - like a book club, but for anything",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build needed'",
+    "generate-images": "node scripts/generate-images.js",
+    "backup": "netlify dev:exec node scripts/backup-data.js",
+    "migrate": "netlify dev:exec node scripts/migrate-to-textclub.js",
+    "migrate:execute": "netlify dev:exec node scripts/migrate-to-textclub.js --execute",
+    "migrate:verify": "netlify dev:exec node scripts/verify-migration.js"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^7.0.0",
+    "@netlify/functions": "^2.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0",
+    "sharp": "^0.34.5"
+  }
+}

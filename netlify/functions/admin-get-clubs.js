@@ -1,0 +1,140 @@
+import { getStore } from '@netlify/blobs';
+import { safeEqual } from '../lib/club-auth.js';
+
+const VERSION = 3;  // Increment to verify deployment
+
+export default async (req, context) => {
+    if (req.method !== 'POST') {
+        return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+            status: 405,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    try {
+        let body;
+        try {
+            body = await req.json();
+        } catch (e) {
+            return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const { phone, password } = body;
+
+        // Check admin credentials. ADMIN_NUMBER and ADMIN_PASSWORD live in Netlify
+        // env vars; if either isn't set, nobody can log in.
+        const adminPhone = process.env.ADMIN_NUMBER;
+        const adminPassword = process.env.ADMIN_PASSWORD;
+        const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
+
+        if (!adminPhone || !adminPassword || cleanPhone !== adminPhone || !safeEqual(password, adminPassword)) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const store = getStore('textclub-data');
+
+        // Get all clubs from list
+        let clubs = await store.get('clubs', { type: 'json' }) || [];
+        console.log('Found clubs in list:', clubs.length);
+
+        // SAFEGUARD: Ensure yearofmusic is always in the list
+        const hasYearofmusic = clubs.some(c => c.slug === 'yearofmusic');
+        if (!hasYearofmusic) {
+            const yomSettings = await store.get('club:yearofmusic:settings', { type: 'json' });
+            if (yomSettings) {
+                console.log('SAFEGUARD: Adding missing yearofmusic to clubs list');
+                clubs.push({
+                    slug: 'yearofmusic',
+                    name: 'Year of Music',
+                    createdAt: '2024-01-01T00:00:00.000Z'
+                });
+                // Persist the fix
+                await store.setJSON('clubs', clubs);
+            }
+        }
+
+        // Get details for each club
+        const clubsWithDetails = [];
+        const errors = [];
+
+        // Aggregate send stats across all clubs
+        let totalSends = 0;
+        let successfulSends = 0;
+        let failedSends = 0;
+        let latestQuotaRemaining = null;
+        let latestSendDate = null;
+
+        for (const club of clubs) {
+            if (!club || !club.slug) {
+                errors.push({ club: club, error: 'Invalid club entry' });
+                continue;
+            }
+
+            try {
+                const members = await store.get(`club:${club.slug}:members`, { type: 'json' }) || [];
+                const history = await store.get(`club:${club.slug}:history`, { type: 'json' }) || [];
+                const settings = await store.get(`club:${club.slug}:settings`, { type: 'json' }) || {};
+
+                const lastSend = Array.isArray(history) && history.length > 0 ? history[0] : null;
+
+                // Aggregate stats from this club's history
+                if (Array.isArray(history)) {
+                    for (const entry of history) {
+                        totalSends++;
+                        if (entry.status === 'success' || entry.success) {
+                            successfulSends++;
+                        } else {
+                            failedSends++;
+                        }
+                        // Track the most recent quotaRemaining
+                        if (typeof entry.quotaRemaining === 'number' && entry.date) {
+                            if (!latestSendDate || new Date(entry.date) > new Date(latestSendDate)) {
+                                latestSendDate = entry.date;
+                                latestQuotaRemaining = entry.quotaRemaining;
+                            }
+                        }
+                    }
+                }
+
+                clubsWithDetails.push({
+                    slug: club.slug,
+                    name: club.name || club.slug,
+                    createdAt: club.createdAt,
+                    memberCount: Array.isArray(members) ? members.length : 0,
+                    lastSend: lastSend ? {
+                        date: lastSend.date,
+                        to: lastSend.name || lastSend.to,
+                        success: lastSend.status === 'success' || lastSend.success
+                    } : null,
+                    paused: settings.paused || false
+                });
+            } catch (clubError) {
+                errors.push({ club: club.slug, error: clubError.message });
+            }
+        }
+
+        const sendStats = {
+            totalSends,
+            successfulSends,
+            failedSends,
+            quotaRemaining: latestQuotaRemaining
+        };
+
+        return new Response(JSON.stringify({ version: VERSION, clubs: clubsWithDetails, errors, totalInList: clubs.length, sendStats }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('Admin get clubs error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to get clubs' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+};
